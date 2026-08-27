@@ -21,7 +21,8 @@ end
 
 function def_state(state_name, H)
     vac_ind = FermionicHilbertSpaces.state_index(FockNumber(0), H)
-    H2, v0 = if ismissing(vac_ind)
+    H2,
+    v0 = if ismissing(vac_ind)
         Haux = hilbert_space(keys(H), push!(copy(basisstates(H)), FockNumber(UInt(0))))
         Haux, vac_state(Haux)
     else
@@ -71,11 +72,11 @@ function eig_state(m::AbstractMatrix, n, ::ExactDiagonalizationAlg)
     eigenvectors[:, n]
 end
 
-using ArnoldiMethod
 struct ArnoldiAlg <: DiagonalizationAlg end
 function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
     # https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl/issues/149
-    decomp, history = try
+    decomp,
+    history = try
         partialschur(Hermitian(m), nev = n, which = :SR; kwargs...)
     catch e
         @warn e "Trying to increase mindim and restarts"
@@ -88,7 +89,6 @@ function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
     return vecs[:, idx]
 end
 
-using KrylovKit
 struct KrylovAlg <: DiagonalizationAlg end
 
 function eig_state(m::AbstractMatrix, n, ::KrylovAlg; kwargs...)
