@@ -47,11 +47,11 @@ function pauli_matrix(Hs, Hfinal)
     return P, pauli_indices
 end
 
-function process_complex(value, tolerance = 1e-3)
+function to_real(value, tolerance = 1e-3)
     abs(imag(value)) < tolerance ? real(value) :
     throw(ArgumentError("The value has an imaginary part: $(imag(value))"))
 end
-expectation_value(ρ, op::AbstractMatrix) = process_complex((tr(density_matrix(ρ) * op)))
+expectation_value(ρ, op::AbstractMatrix) = to_real(tr(density_matrix(ρ) * op))
 variance(ρ, op) = expectation_value(ρ, op^2) - expectation_value(ρ, op)^2
 
 ## ======== Measurement sets =================

@@ -1,18 +1,5 @@
-function ridge_regression(X_train, Y_train, λ::Number = 0)
-    if λ == 0
-        return pinv(X_train) * Y_train
-    end
-
-    U, s, V = svd(X_train)
-    D = Diagonal(s ./ (s .^ 2 .+ λ))
-    W = V * D * U' * Y_train
-    return W
-end
-
-function ridge_regression(X_train, Y_train, X_test, λ::Number = 0)
-    W = ridge_regression(X_train, Y_train, λ)
-    Y_pred = X_test * W
-    return W, Y_pred
+function regression(X_train, Y_train)
+    return Y_train * pinv(X_train)
 end
 
 function split_train_test(X, Y, train_fraction = 0.5)
