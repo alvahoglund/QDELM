@@ -17,3 +17,18 @@ function mse_against_training_size(
     axislegend(ax)
     return fig
 end
+
+function mse_against_test_size(
+        nbr_test_states_list, mse, mse_diff, xscale = log10)
+    fig = Figure()
+    ax = Axis(fig[1, 1], xlabel = "Number of test states",
+        ylabel = "MSE", yscale = log10, xscale = xscale)
+    scatter!(ax, nbr_test_states_list, mse, label = "MSE")
+    lines!(ax, nbr_test_states_list, mse)
+    scatter!(ax, nbr_test_states_list, mse_diff,
+        label = L"\frac{norm(MSE - MSE_{theory})}{norm(MSE_{theory})}")
+    lines!(ax, nbr_test_states_list, mse_diff)
+    axislegend(ax)
+    return fig
+end
+

@@ -36,8 +36,10 @@ function fit_and_evaluate(; X_train, X_test, Y_train, Y_test, σE)
     Z_train, Z_test = preprocess_X(X_train = X̃_train, X_test = X̃_test)
     W = QDELM.regression(Z_train, Y_train)
     Y_pred = W * Z_test
+    Y_pred_train = W * Z_train
     mse = get_mse(Y_test, Y_pred)
-    return (; mse, W)
+    mse_train = get_mse(Y_train, Y_pred_train)
+    return (; mse, mse_train, W)
 end
 
 function fit_and_compare(; X_train, X_test, Y_train, Y_test, σE, Σ, S, B, b)
@@ -47,7 +49,8 @@ function fit_and_compare(; X_train, X_test, Y_train, Y_test, σE, Σ, S, B, b)
     W_theory = W̃X_theory(S, B, Σ, σE, b)
     weight_diff = norm(result.W[:, 1:(end - 1)] - W_theory) / norm(W_theory)
     mse_diff = norm(result.mse - mse_theory_val) / norm(mse_theory_val)
-    return (; result.mse, result.W, weight_diff, mse_diff)
+    mse_diff_train = norm(result.mse_train - mse_theory_val) / norm(mse_theory_val)
+    return (; result.mse, result.W, weight_diff, mse_diff, result.mse_train, mse_diff_train)
 end
 
 ## ================= Theoretical weights ======================
