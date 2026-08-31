@@ -42,7 +42,7 @@ mse_against_training_size(
 
 ## Noisy, logscale, vary training size
 nbr_train_states_list = floor.(Int, [i
-                                     for i in exp10.(range(log10(1), log10(10^4), length = 50))])
+                                     for i in exp10.(range(log10(1), log10(10^4), length = 100))])
 σE = 1e-2
 
 result_noisy_train = map(
@@ -52,10 +52,11 @@ result_noisy_train = map(
         σE = σE, Σ = Σ, S = S, B = B, b = b),
     nbr_train_states_list)
 
-mse_against_training_size(
+fig_noisy_train = mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noisy_train, :mse)),
     mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), log10)
 
+#save("Figures/vary_training_size_noisy.png", fig_noisy_train)
 ## Noisy, logscale, vary test size
 nbr_test_states_list = floor.(Int, [i
                                     for i in exp10.(range(log10(1), log10(10^4), length = 100))])
@@ -66,5 +67,8 @@ result_noisy_test = map(
         σE = σE, Σ = Σ, S = S, B = B, b = b),
     nbr_test_states_list)
 
-mse_against_test_size(nbr_test_states_list, mean.(getproperty.(result_noisy_test, :mse)),
+fig_noisy_test = mse_against_test_size(
+    nbr_test_states_list, mean.(getproperty.(result_noisy_test, :mse)),
     mean.(getproperty.(result_noisy_test, :mse_diff)), log10)
+
+#save("Figures/vary_test_size_noisy.png", fig_noisy_test)
