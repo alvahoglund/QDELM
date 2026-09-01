@@ -81,6 +81,12 @@ function charge_probabilities(qd_system::QuantumDotSystem)
     matrix_representation_ops(
         charge_probabilities(qd_system.grids.total), qd_system.H_total)
 end
+function charge_probabilities_01(qd_system::QuantumDotSystem)
+    matrix_representation_ops(
+        vcat(zero_charge_probabilities(qd_system.grids.total),
+            single_charge_probabilities(qd_system.grids.total)),
+        qd_system.H_total)
+end
 
 function correlated_measurements(grid, qn_total)
     valid_combos = get_measurement_combinations(grid, qn_total)

@@ -2,8 +2,8 @@ using JLD2, CairoMakie
 includet("..\\Core\\estimate_spin.jl")
 includet("..\\Plots\\vary_data_size.jl")
 ## Load system
-S = load("DefaultSystems/scrambling_map_B.jld2", "S")
-sys = load("DefaultSystems/scrambling_map_B.jld2", "sys")
+S = load("DefaultSystems/scrambling_map_D.jld2", "S")
+sys = load("DefaultSystems/scrambling_map_D.jld2", "sys")
 
 Pm, Pm_dict = QDELM.pauli_matrix(sys.Hs_main, sys.H_main)
 B = 1/2 .* Pm[:, 2:end]
@@ -38,7 +38,7 @@ result_noise_free = map(
 
 mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noise_free, :mse)),
-    mean.(getproperty.(result_noise_free, :mse_diff)), mean.(getproperty.(result_noise_free, :weight_diff)), identity)
+    mean.(getproperty.(result_noise_free, :mse_diff)), mean.(getproperty.(result_noise_free, :weight_diff)), S, identity)
 
 ## Noisy, logscale, vary training size
 nbr_train_states_list = floor.(Int, [i
@@ -54,7 +54,7 @@ result_noisy_train = map(
 
 fig_noisy_train = mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noisy_train, :mse)),
-    mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), log10)
+    mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), S, log10)
 
 #save("Figures/vary_training_size_noisy.png", fig_noisy_train)
 ## Noisy, logscale, vary test size

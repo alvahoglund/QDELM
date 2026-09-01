@@ -1,5 +1,5 @@
 function mse_against_training_size(
-        nbr_train_states_list, mse, mse_diff, weight_diff, xscale = log10)
+        nbr_train_states_list, mse, mse_diff, weight_diff, S, xscale = log10)
     fig = Figure()
     ax = Axis(fig[1, 1], xlabel = "Number of training states",
         ylabel = "MSE", yscale = log10, xscale = xscale)
@@ -12,8 +12,8 @@ function mse_against_training_size(
         label = L"\frac{norm(MSE - MSE_{theory})}{norm(MSE_{theory})}")
     lines!(ax, nbr_train_states_list, mse_diff)
     vlines!(ax, [16], color = :grey, linestyle = :dash, label = "16 training states")
-    vlines!(ax, [54], color = :grey, linestyle = :dash,
-        label = "54 training states = rows in S")
+    vlines!(ax, [size(S, 1)], color = :black, linestyle = :dash,
+        label = "$(size(S, 1)) training states = rows in S")
     axislegend(ax)
     return fig
 end

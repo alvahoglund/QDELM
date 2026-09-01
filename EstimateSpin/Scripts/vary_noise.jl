@@ -2,8 +2,8 @@ includet("..\\Core\\estimate_spin.jl")
 includet("..\\Plots\\vary_noise.jl")
 using JLD2, CairoMakie
 ## Load system
-S = load("DefaultSystems/scrambling_map_A.jld2", "S")
-sys = load("DefaultSystems/scrambling_map_A.jld2", "sys")
+S = load("DefaultSystems/scrambling_map_D.jld2", "S")
+sys = load("DefaultSystems/scrambling_map_D.jld2", "sys")
 
 Pm, Pm_dict = QDELM.pauli_matrix(sys.Hs_main, sys.H_main)
 B = 1/2 .* Pm[:, 2:end]

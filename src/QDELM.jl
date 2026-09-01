@@ -13,10 +13,12 @@ export tight_binding_system, hamiltonians, hamiltonian_dots, hamiltonian_interac
 export random_separable_state, random_product_state, triplet_plus, singlet, ground_state,
        def_state, density_matrix, matrix_representation_hams
 export charge_measurements, effective_measurement, scrambling_map, expectation_value,
-       charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix
+       charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix,
+       add_noise, to_real
 export state_time_evolution, operator_time_evolution
 export set_dot_params, set_interaction_params
-
+export regression, get_X, get_Y, get_X_noisy, center_X, add_bias, preprocess_X,
+       feature_transformation
 include("quantum_dot_system.jl")
 include("hamiltonian_tight_binding.jl")
 include("states.jl")

@@ -1,5 +1,18 @@
-function regression(X_train, Y_train)
-    return Y_train * pinv(X_train)
+## Datasets
+
+get_X(S, Ω) = to_real.(S * Ω)
+get_X_noisy(X, σE) = X + rand(Normal(0, σE), size(X))
+get_Y(Σ, Ω) = Σ' * Ω
+
+function center_X(; X_train, X_test)
+    XC_train = X_train .- mean(X_train, dims = 2)
+    XC_test = X_test .- mean(X_train, dims = 2)
+    return (XC_train = XC_train, XC_test = XC_test)
+end
+add_bias(XC) = vcat(XC, ones(1, size(XC, 2)))
+function preprocess_X(; X_train, X_test)
+    return (Z_train = add_bias(center_X(X_train = X_train, X_test = X_test).XC_train),
+        Z_test = add_bias(center_X(X_train = X_train, X_test = X_test).XC_test))
 end
 
 function split_train_test(X, Y, train_fraction = 0.5)
@@ -9,12 +22,12 @@ function split_train_test(X, Y, train_fraction = 0.5)
     return X_train, X_test, Y_train, Y_test
 end
 
-mse(Y_true, Y_pred) = mean((Y_true - Y_pred) .^ 2)
-
-function mse_prediction(S_SVD, Pm, σE, b)
-    real.(diag(Pm' * S_SVD.V * diagm((b * σE^2) ./ (b .* S_SVD.S .^ 2 .+ σE^2)) * S_SVD.V' *
-               Pm))
+##
+function regression(X_train, Y_train)
+    return Y_train * pinv(X_train)
 end
+
+mse(Y_true, Y_pred) = mean((Y_true - Y_pred) .^ 2)
 
 ## Feature transformation for nonlinear regression
 abstract type FeatureTransformation end
