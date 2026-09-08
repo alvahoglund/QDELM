@@ -47,6 +47,12 @@ function pauli_matrix(Hs, Hfinal)
     return P, pauli_indices
 end
 
+function get_B(Hs_main, H_main)
+    Pm, Pm_dict = pauli_matrix(Hs_main, H_main)
+    B = 1 / 2 .* Pm[:, 2:end]
+    return B
+end
+
 function to_real(value, tolerance = 1e-3)
     abs(imag(value)) < tolerance ? real(value) :
     throw(ArgumentError("The value has an imaginary part: $(imag(value))"))

@@ -1,5 +1,5 @@
 
-function make_test_system(; u_intra = 1.0, t = 1.0, t_so = 0.1, u_inter = 1.0)
+function make_test_system(; u_intra = 1.0, t = 1.0, t_so = 1.0, u_inter = 1.0)
     qd_system = tight_binding_system(2, 3, 1)
     pf = QDELM.random_param_functions(;
         u_intra = u_intra, t = t, t_so = t_so, u_inter = u_inter)

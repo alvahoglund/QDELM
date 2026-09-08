@@ -1,4 +1,4 @@
-
+using Statistics
 function plot_sv_m!(pl, sv_mat, mean_sv, M_max; title = "")
     ax = Axis(
         pl[1, 1], yscale = Makie.Symlog10(1e-6), ylabel = "Singular values",
@@ -54,3 +54,55 @@ function plot_pauli_overlaps!(gl, F; ncols = 5, title = "")
     Label(gl[nrows + 1, 1:ncols], title, fontsize = 20, font = :bold)
 end
 
+## ======================= Ensemble average varying qn =========================
+
+function plot_smallest_sv_qn!(gl, ens_sv_res)
+    ax = Axis(gl[1, 1], xlabel = "Number of dots in reservoir",
+        ylabel = "Smallest singular value",
+        yscale = log10, title = "Smallest singular value")
+
+    for nbr_dots_res in sort(collect(keys(ens_sv_res)))
+        sv_list = ens_sv_res[nbr_dots_res]
+        smsv = [minimum(sv) for sv in sv_list]
+        x_vals = range(-length(smsv)÷2, length(smsv) ÷ 2, length = length(smsv))
+        scatter!(ax, x_vals, smsv, markersize = 8,
+            label = "nbr_dots_res = $nbr_dots_res")
+        lines!(ax, x_vals, smsv)
+    end
+    axislegend(ax, position = :rb)
+    return gl
+end
+
+function plot_condition_number_qn!(gl, ens_sv_res)
+    ax = Axis(gl[1, 1], xlabel = "Number of dots in reservoir",
+        ylabel = "Condition number",
+        yscale = log10, title = "Condition number")
+    ylims!(ax, 1, nothing)
+    for nbr_dots_res in sort(collect(keys(ens_sv_res)))
+        sv_list = ens_sv_res[nbr_dots_res]
+        κ_val = [maximum(sv) / minimum(sv) for sv in sv_list]
+        x_vals = range(-length(κ_val)÷2, length(κ_val) ÷ 2, length = length(κ_val))
+        scatter!(ax, x_vals, κ_val, markersize = 8,
+            label = "nbr_dots_res = $nbr_dots_res")
+        lines!(ax, x_vals, κ_val)
+    end
+    axislegend(ax, position = :rb)
+    return gl
+end
+
+function plot_mean_sv_qn!(gl, ens_sv_res)
+    ax = Axis(gl[1, 1], xlabel = "Number of dots in reservoir",
+        ylabel = "Mean singular value",
+        yscale = log10, title = "Mean singular value")
+
+    for nbr_dots_res in sort(collect(keys(ens_sv_res)))
+        sv_list = ens_sv_res[nbr_dots_res]
+        mean_sv = mean.(sv_list)
+        x_vals = range(-length(mean_sv)÷2, length(mean_sv) ÷ 2, length = length(mean_sv))
+        scatter!(ax, x_vals, mean_sv, markersize = 8,
+            label = "nbr_dots_res = $nbr_dots_res")
+        lines!(ax, x_vals, mean_sv)
+    end
+    axislegend(ax, position = :rb)
+    return gl
+end

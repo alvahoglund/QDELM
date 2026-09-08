@@ -10,31 +10,14 @@ measurements = QDELM.charge_probabilities_01(sys)
 Pm, Pm_dict = QDELM.pauli_matrix(sys.Hs_main, sys.H_main)
 B = 1/2 .* Pm[:, 2:end]
 
-function custom_param_functions()
-    ϵ_main = 0.5
-    ϵ_res = 1
-    ϵb = [0, 0, 1]
-    u_intra = 1.0
-    t = 1.0
-    t_so = 10
-    u_inter = 1.0
-    QDELM.ParamFunctions(
-        ϵ_func_main = () -> ϵ_main,
-        ϵ_func_res = () -> rand() * ϵ_res,
-        ϵb_func = () -> ϵb,
-        u_intra_func = () -> u_intra * 10 + rand(),
-        t_func = () -> rand() * t,
-        t_so_func = () -> t_so * rand(),
-        u_inter_func = () -> u_inter * rand()
-    )
-end
-
 ## ================ Multiplexing =====================
 M_max = 300
 S_list_t = time_multiplexing(;
-    sys, measurements, M_max, seed = 7284, param_funcs = custom_param_functions)
+    sys, measurements, M_max, seed = 7284,
+    param_funcs = QDELM.random_param_functions(t_so = 0.1))
 S_list_h = hamiltonian_multiplexing(;
-    sys, measurements, M_max, seed = 8310, param_funcs = custom_param_functions)
+    sys, measurements, M_max, seed = 8310,
+    param_funcs = QDELM.random_param_functions(t_so = 0.1))
 
 sv_t = hcat(svd_lists_multiplexing(S_list_t, B)...)
 sv_h = hcat(svd_lists_multiplexing(S_list_h, B)...)

@@ -137,15 +137,15 @@ function ParamFunctions(;
         ϵ_func_main, ϵ_func_res, ϵb_func, u_intra_func, t_func, t_so_func, u_inter_func)
 end
 
-function random_param_functions(; ϵ_main = 0.5, ϵ_res = 1, ϵb = [0, 0, 1],
-        u_intra = 1.0, t = 1.0, t_so = 0.1, u_inter = 1.0)
+function random_param_functions(; ϵ_main = 1, ϵ_res = 1, ϵb = [0, 0, 1],
+        u_intra = 1.0, t = 1.0, t_so = 1, u_inter = 1.0)
     ParamFunctions(
-        ϵ_func_main = () -> ϵ_main,
+        ϵ_func_main = () -> ϵ_main * 0.5,
         ϵ_func_res = () -> rand() * ϵ_res,
         ϵb_func = () -> ϵb,
         u_intra_func = () -> u_intra * 10 + rand(),
         t_func = () -> rand() * t,
-        t_so_func = () -> t_so * rand(),
+        t_so_func = () -> t_so * 0.1 * rand(),
         u_inter_func = () -> u_inter * rand()
     )
 end
