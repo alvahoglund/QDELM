@@ -20,7 +20,7 @@ function test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, t; at
     @test S_adaptive≈S_diag atol=atol
 end
 
-@testset "Scrambling map algorithms agree — default parameters, large t" begin
+@testset "Scrambling map algorithms agree — default parameters, large time" begin
     qd_system, measurements, ψ_res, ham_total = make_test_system()
     test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, 1000.0)
 end
@@ -30,12 +30,17 @@ end
     test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, 100.0)
 end
 
-@testset "Scrambling map algorithms agree — large t, multiple times" begin
+@testset "Scrambling map algorithms agree — large time, multiple times" begin
     qd_system, measurements, ψ_res, ham_total = make_test_system()
     test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, [200.0, 1000.0])
 end
 
 @testset "Scrambling map algorithms agree — large U_intra, multiple times" begin
     qd_system, measurements, ψ_res, ham_total = make_test_system(u_intra = 10.0)
+    test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, [100.0, 200.0])
+end
+
+@testset "Scrambling map algorithms agree — large t" begin
+    qd_system, measurements, ψ_res, ham_total = make_test_system(t = 100.0)
     test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, [100.0, 200.0])
 end
