@@ -1,4 +1,5 @@
-@testset "Eigenstates" begin
+@testitem "Eigenstates" begin
+    using LinearAlgebra
     Nmain = 2
     Nres = 2
     qn_res = 2

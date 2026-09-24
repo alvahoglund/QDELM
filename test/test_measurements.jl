@@ -1,27 +1,31 @@
-@testset "Charge Probabilities" begin
+@testitem "Charge Probabilities" begin
     # Test probability functions sum to 1
+    using LinearAlgebra
     coordinate = (1, 1)
-    H = hilbert_space([(coordinate, :↑), (coordinate, :↓)], NumberConservation())
+    @fermions c
+    H = hilbert_space(c, [(coordinate, :↑), (coordinate, :↓)], NumberConservation())
 
-    p0_val = representation(QDELM.p0(coordinate), H)
-    p1_val = representation(QDELM.p1(coordinate), H)
-    p2_val = representation(QDELM.p2(coordinate), H)
+    p0_val = representation(QDELM.p0(coordinate, c), H)
+    p1_val = representation(QDELM.p1(coordinate, c), H)
+    p2_val = representation(QDELM.p2(coordinate, c), H)
 
     @test p0_val + p1_val + p2_val ≈ I
 end
 
-@testset "Expectation Value of Charge Measurement" begin
+@testitem "Expectation Value of Charge Measurement" begin
     coordinate = (1, 1)
-    H = hilbert_space([(coordinate, :↑), (coordinate, :↓)], NumberConservation(1))
+    @fermions c
+    H = hilbert_space(c, [(coordinate, :↑), (coordinate, :↓)], NumberConservation(1))
 
     state = [0.5 0.0; 0.0 0.5]
-    p1_op = representation(QDELM.p1(coordinate), H)
+    p1_op = representation(QDELM.p1(coordinate, c), H)
 
     ev = expectation_value(state, p1_op)
     @test ev ≈ 1.0
 end
 
-@testset "Pauli strings" begin
+@testitem "Pauli strings" begin
+    using LinearAlgebra
     sys = tight_binding_system(2, 2, 2)
     paulis = pauli_strings(sys.Hs_main, sys.H_main)
 
@@ -30,7 +34,9 @@ end
     @test map(ops -> dot(ops...), Base.product(ops, ops)) ≈ 4 * I
 end
 
-@testset "Spin measurements" begin
+@testitem "Spin measurements" begin
+    using LinearAlgebra
+    import QDELM: to_dense
     sys = tight_binding_system(2, 2, 2)
 
     #Single spin
@@ -72,9 +78,9 @@ end
 
     for nbr_res in 0:3
         for qn in 0:(nbr_res * 2)
-            sys = tight_binding_system(2, nbr_res, qn)
-            s2_op = QDELM.total_spin_op(sys.grids.total, sys.H_total)
-            vals = round.(eigen(Matrix(s2_op)).values, digits = 4)
+            local sys = tight_binding_system(2, nbr_res, qn)
+            local s2_op = QDELM.total_spin_op(sys.grids.total, sys.H_total)
+            vals = round.(eigen(to_dense(s2_op)).values, digits = 4)
 
             S2_exp = S2_list(nbr_res + 2, qn + 2)
             @test sort!(unique(abs.(vals))) ≈ sort!(S2_exp)

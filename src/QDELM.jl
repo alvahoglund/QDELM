@@ -19,6 +19,10 @@ export state_time_evolution, operator_time_evolution
 export set_dot_params, set_interaction_params
 export regression, get_X, get_Y, get_X_noisy, center_X, add_bias, preprocess_X,
        feature_transformation
+
+to_dense(s::AbstractSparseArray) = Array(s)
+to_dense(s::AbstractArray) = s
+
 include("quantum_dot_system.jl")
 include("hamiltonian_tight_binding.jl")
 include("states.jl")

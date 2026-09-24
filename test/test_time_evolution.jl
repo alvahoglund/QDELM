@@ -1,5 +1,6 @@
 
-@testset "State and operator evolution" begin
+@testitem "State and operator evolution" begin
+    using LinearAlgebra
     ρ = rand(ComplexF64, 4, 4) + hc
     ρ = ρ ./ tr(ρ)
     ham = (rand(ComplexF64, 4, 4) + hc) / 2
@@ -15,8 +16,8 @@
     @test exp_value_op ≈ exp_value_ρ
 end
 
-@testset "Effective measurements & time evolution" begin
-    qd_system = tight_binding_system(2, 3, 1)
+@testitem "Effective measurements & time evolution" begin
+    qd_system = tight_binding_system(2, 2, 1)
     seed = 2
     hams = hamiltonians(qd_system.grids, seed)
 

@@ -1,5 +1,5 @@
 
-@testset "Hamiltonian of tight binding model" begin
+@testitem "Hamiltonian of tight binding model" begin
     qd_system = tight_binding_system(2, 3, 1)
     hams = hamiltonians(qd_system.grids)
     h_main = representation(hams.main, qd_system.H_total)
@@ -12,7 +12,7 @@
     @test h_tot' ≈ h_tot
 end
 
-@testset "Sum of Hamiltonians" begin
+@testitem "Sum of Hamiltonians" begin
     # Check that H_main + H_res + H_intersection = H_total_system    
     qd_system = tight_binding_system(3, 5, 2)
     ϵ_func() = 2
