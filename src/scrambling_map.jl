@@ -127,7 +127,7 @@ struct DiagonalizationPropagatorAlg <: AbstractPropagatorAlg end
 function scrambling_map(H_main, H_res, H_total, measurements, ψres::AbstractVector,
         hamiltonian, t::Number, ::DiagonalizationPropagatorAlg)
     N_main = dim(H_main)
-    F = eigen(Hermitian(Matrix(hamiltonian)))
+    F = eigen(Hermitian(to_dense(hamiltonian)))
     phases = exp.(-im .* F.values .* t)
     e_j = zeros(ComplexF64, N_main)
     U = stack(1:N_main) do n

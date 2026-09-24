@@ -20,22 +20,12 @@ function triplet_minus()
 end
 
 function def_state(state_name, H)
-    vac_ind = FermionicHilbertSpaces.state_index(FockNumber(0), H)
-    H2,
-    v0 = if ismissing(vac_ind)
-        Haux = hilbert_space(keys(H), push!(copy(basisstates(H)), FockNumber(UInt(0))))
-        Haux, vac_state(Haux)
-    else
-        H, vac_state(H)
-    end
-    v = representation(state_name(), H2; projection = true) * v0
-    if ismissing(vac_ind)
-        v = v[1:(end - 1)]
-    end
-    return normalize!(v)
+    vacuum = FermionicHilbertSpaces.SymbolicState(H, FockNumber(0))
+    state = state_name() * vacuum
+    representation(state, H)
 end
 
-max_mixed_state(H) = Matrix{ComplexF64}(I, dim(H), dim(H)) / dim(H)
+max_mixed_state(H) = I(dim(H))/dim(H) #Matrix{ComplexF64}(I, dim(H), dim(H)) / dim(H)
 
 function werner_state(state_name, p, H)
     (1 - p) * density_matrix(def_state(state_name, H)) + p * max_mixed_state(H)
