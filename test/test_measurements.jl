@@ -3,9 +3,9 @@
     coordinate = (1, 1)
     H = hilbert_space([(coordinate, :↑), (coordinate, :↓)], NumberConservation())
 
-    p0_val = matrix_representation(QDELM.p0(coordinate), H)
-    p1_val = matrix_representation(QDELM.p1(coordinate), H)
-    p2_val = matrix_representation(QDELM.p2(coordinate), H)
+    p0_val = representation(QDELM.p0(coordinate), H)
+    p1_val = representation(QDELM.p1(coordinate), H)
+    p2_val = representation(QDELM.p2(coordinate), H)
 
     @test p0_val + p1_val + p2_val ≈ I
 end
@@ -15,7 +15,7 @@ end
     H = hilbert_space([(coordinate, :↑), (coordinate, :↓)], NumberConservation(1))
 
     state = [0.5 0.0; 0.0 0.5]
-    p1_op = matrix_representation(QDELM.p1(coordinate), H)
+    p1_op = representation(QDELM.p1(coordinate), H)
 
     ev = expectation_value(state, p1_op)
     @test ev ≈ 1.0

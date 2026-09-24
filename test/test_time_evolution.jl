@@ -20,7 +20,7 @@ end
     seed = 2
     hams = hamiltonians(qd_system.grids, seed)
 
-    ham_res = matrix_representation(hams.res, qd_system.H_res)
+    ham_res = representation(hams.res, qd_system.H_res)
     ψ_res = ground_state(ham_res)
     ρres = ψ_res * ψ_res'
 
@@ -37,7 +37,7 @@ end
     measurements = QDELM.charge_probabilities(qd_system)
 
     t = 10
-    ham_total = matrix_representation(hams.total, qd_system.H_total)
+    ham_total = representation(hams.total, qd_system.H_total)
 
     time_evolved_states = map(
         total_state -> state_time_evolution(total_state, t, ham_total), total_states)

@@ -119,7 +119,7 @@ end
 ## ============= Spin measurements ======================
 
 #Operator for total spin S^2 on coodinate i 
-Si2(coordinate_i, H_i) = matrix_representation(3 / 4 * p1(coordinate_i), H_i)
+Si2(coordinate_i, H_i) = representation(3 / 4 * p1(coordinate_i), H_i)
 
 # Operator for S_i ⋅ S_j
 function Sij(coordinate_i, coordinate_j, H)

@@ -28,7 +28,7 @@ function def_state(state_name, H)
     else
         H, vac_state(H)
     end
-    v = matrix_representation(state_name(), H2; projection = true) * v0
+    v = representation(state_name(), H2; projection = true) * v0
     if ismissing(vac_ind)
         v = v[1:(end - 1)]
     end
@@ -68,7 +68,7 @@ abstract type DiagonalizationAlg end
 struct ExactDiagonalizationAlg <: DiagonalizationAlg end
 
 function eig_state(m::AbstractMatrix, n, ::ExactDiagonalizationAlg)
-    eigenvalues, eigenvectors = eigen(Matrix(m))
+    eigenvalues, eigenvectors = eigen(to_dense(m))
     eigenvectors[:, n]
 end
 
