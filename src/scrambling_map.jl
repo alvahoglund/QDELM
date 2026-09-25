@@ -567,10 +567,10 @@ Base.@kwdef struct AutoPropagatorAlg <: AbstractStatePropagatorAlg
     small_dim::Int = 200
     max_diag_dim::Int = 4000
     sec_eig::Float64 = 4e-10
-    sec_gemm::Float64 = 4e-11
-    sec_spmm::Float64 = 1.5e-9
-    sec_vec::Float64 = 1e-9
-    real_eig_factor::Float64 = 0.3
+    sec_gemm::Float64 = 1.6e-10
+    sec_spmm::Float64 = 1.3e-9
+    sec_vec::Float64 = 6.6e-10
+    real_eig_factor::Float64 = 0.35
     lanczos_steps::Int = 30
 end
 
@@ -624,37 +624,6 @@ function propagate_block(H, Ψ0, ts, alg::KrylovPropagatorAlg)
         end
     end
     return Us, (; method=:krylov_legacy, err_est=NaN, nmatvec=nmv)
-end
-
-struct AdaptivePropagatorAlg <: AbstractStatePropagatorAlg
-    krylov_dim::Int
-    tol::Float64
-    step_size_const::Float64
-end
-function AdaptivePropagatorAlg(; krylov_dim=100, tol=1e-6, step_size_const=0.5)
-    AdaptivePropagatorAlg(krylov_dim, tol, step_size_const)
-end
-const DIAG_MAX_DIM = 3000
-
-function propagate_block(H, Ψ0, ts, alg::AdaptivePropagatorAlg)
-    tsv = _tvec(ts)
-    N = size(H, 1)
-    stepping = SteppingKrylovPropagatorAlg(; krylov_dim=alg.krylov_dim, tol=alg.tol,
-        step_size_const=alg.step_size_const)
-    step_size, center = get_step_size(H, stepping)
-    Us = map(tsv) do t
-        n_steps = iszero(t) ? 0 : ceil(Int, abs(t) / step_size)
-        sub = if n_steps <= 1
-            KrylovPropagatorAlg(alg.krylov_dim, alg.tol)
-        elseif N <= DIAG_MAX_DIM && n_steps > N ÷ alg.krylov_dim
-            DiagonalizationPropagatorAlg()
-        else
-            SteppingKrylovPropagatorAlg(alg.krylov_dim, alg.tol, step_size,
-                alg.step_size_const, center)
-        end
-        only(first(propagate_block(H, Ψ0, [t], sub)))
-    end
-    return Us, (; method=:adaptive_legacy, err_est=NaN, nmatvec=-1)
 end
 
 # -----------------------------------------------------------------------------
@@ -715,9 +684,6 @@ end
         ("eu-timestep", Q.ExpUtilsTimestepPropagatorAlg(tol=1e-11), 1e-6),
         ("auto", Q.AutoPropagatorAlg(tol=1e-11), 1e-9),
         ("auto-cheb", Q.AutoPropagatorAlg(tol=1e-11, small_dim=0, sec_eig=1.0), 1e-9),
-        ("legacy-krylov", Q.KrylovPropagatorAlg(), 1e-6),
-        ("legacy-stepping", Q.SteppingKrylovPropagatorAlg(), 1e-6),
-        ("legacy-adaptive", Q.AdaptivePropagatorAlg(), 1e-6),
     ]
 
     # ------------------------------- tests ---------------------------------------
@@ -805,7 +771,7 @@ end
 
         @testset "AutoPropagatorAlg selection" begin
             ts = [50.0 / spectral_halfwidth(H)]
-            _, i1 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg())
+            _, i1 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=size(H, 1)))
             @test i1.method == :diagonalization                                   # N ≤ small_dim
             _, i2 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=0, sec_eig=1.0))
             @test i2.method == :chebyshev

@@ -10,9 +10,7 @@
 
     ψ_arnoldi = ground_state(hamiltonian_total, QDELM.ArnoldiAlg())
     ψ_exact = ground_state(hamiltonian_total, QDELM.ExactDiagonalizationAlg())
-    ψ_krylov = ground_state(hamiltonian_total, QDELM.KrylovAlg())
 
-    @test(norm(ψ_arnoldi)≈norm(ψ_exact)≈norm(ψ_krylov)≈1.0)
-    @test isapprox(abs(ψ_arnoldi' * ψ_exact), 1.0; atol = 1e-7)
-    @test isapprox(abs(ψ_krylov' * ψ_exact), 1.0; atol = 1e-7)
+    @test(norm(ψ_arnoldi)≈norm(ψ_exact)≈1.0)
+    @test isapprox(abs(ψ_arnoldi' * ψ_exact), 1.0; atol=1e-7)
 end

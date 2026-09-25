@@ -1,5 +1,5 @@
 module QDELM
-using LinearAlgebra, Random, Arpack, SparseArrays, LinearMaps, Statistics
+using LinearAlgebra, Random, SparseArrays, LinearMaps, Statistics
 using ExponentialUtilities
 using Reexport
 @reexport using FermionicHilbertSpaces
@@ -9,7 +9,6 @@ using Reexport
 using Distributions: Normal
 using ArnoldiMethod
 using TestItems, Test
-using QuantumPropagators
 
 export tight_binding_system, hamiltonians, hamiltonian_dots, hamiltonian_interactions
 export random_separable_state, random_product_state, triplet_plus, singlet, ground_state,
@@ -32,7 +31,6 @@ include("time_evolution.jl")
 include("measurements.jl")
 include("effective_measurements.jl")
 include("scrambling_map.jl")
-include("scrambling_map_qp.jl")
 include("regression.jl")
 
 end

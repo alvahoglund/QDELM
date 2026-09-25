@@ -13,12 +13,9 @@
     function test_algorithms_agree(qd_system, measurements, ψ_res, ham_total, t; atol=1e-4)
         S_diag = scrambling_map(qd_system, measurements, ψ_res, ham_total, t,
             QDELM.DiagonalizationPropagatorAlg())
-        # S_stepping = scrambling_map(qd_system, measurements, ψ_res, ham_total, t,
-            # QDELM.SteppingKrylovPropagatorAlg())
-        S_adaptive = scrambling_map(qd_system, measurements, ψ_res, ham_total, t,
-            QDELM.AdaptivePropagatorAlg())
-        @test S_stepping≈S_diag atol=atol
-        @test S_adaptive≈S_diag atol=atol
+        S_cheb = scrambling_map(qd_system, measurements, ψ_res, ham_total, t,
+            QDELM.ChebyshevPropagatorAlg())
+        @test S_cheb≈S_diag atol=atol
     end
 
     @testset "default parameters, large time" begin

@@ -15,7 +15,7 @@
 # =============================================================================
 using LinearAlgebra, SparseArrays, Random, Printf, Statistics
 using QDELM
-using ExponentialUtilities, QuantumPropagators
+using ExponentialUtilities
 const Q = QDELM
 
 # ─────────────────────────────── settings ────────────────────────────────────
@@ -39,7 +39,6 @@ function algorithm_set(set, tol)
     fast = Pair{String, Any}[
         "diag"      => Q.DiagonalizationPropagatorAlg(),
         "cheb"      => Q.ChebyshevPropagatorAlg(; tol),
-        "qp-cheby"  => Q.QPAlg(Q.QPCheby(; cheby_coeffs_limit = tol)),
         "auto"      => Q.AutoPropagatorAlg(; tol),
     ]
     set === :fast && return fast
@@ -47,8 +46,6 @@ function algorithm_set(set, tol)
         "cheb-gersh"      => Q.ChebyshevPropagatorAlg(; tol, bounds = :gershgorin),
         "eu-lanczos"      => Q.ExpUtilsLanczosPropagatorAlg(; tol),
         "eu-timestep"     => Q.ExpUtilsTimestepPropagatorAlg(; tol),
-        "qp-cheby-block"  => Q.QPAlg(Q.QPCheby(; cheby_coeffs_limit = tol); block = true),
-        "legacy-adaptive" => Q.AdaptivePropagatorAlg(),
     ])
     set === :default && return default
     set === :tuning && return vcat(default, Pair{String, Any}[
@@ -57,9 +54,6 @@ function algorithm_set(set, tol)
         "cheb-stepping"   => Q.ChebyshevPropagatorAlg(; tol, multitime = :stepping),
         "eu-lanczos-m100"  => Q.ExpUtilsLanczosPropagatorAlg(; tol, m = 100),
         "eu-lanczos-m60"  => Q.ExpUtilsLanczosPropagatorAlg(; tol, m = 60),
-        "qp-cheby-gersh"  => Q.QPAlg(Q.QPCheby(; cheby_coeffs_limit = tol, bounds = :gershgorin)),
-        # "qp-newton-m20"   => Q.QPAlg(Q.QPNewton(; relerr = tol, m_max = 20, max_ρdt = 40.0)),
-        # "qp-newton-m40"   => Q.QPAlg(Q.QPNewton(; relerr = tol, m_max = 40, max_ρdt = 80.0)),
     ])
     throw(ArgumentError("unknown algorithm set $set"))
 end
