@@ -22,7 +22,7 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 
 [sources]
 ArnoldiMethod = {rev = "master", url = "https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl.git"}
-FermionicHilbertSpaces = {path = "C:\\Users\\svens\\Projects\\FermionicHilbertSpaces.jl"}
+FermionicHilbertSpaces = {rev = "main", url = "https://github.com/cvsvensson/FermionicHilbertSpaces.jl.git"}
 
 [compat]
 ArnoldiMethod = "0.4"
