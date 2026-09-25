@@ -79,8 +79,8 @@ function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
     return vecs[:, idx]
 end
 
-struct KrylovAlg <: DiagonalizationAlg end
 
+struct KrylovAlg <: DiagonalizationAlg end # Removed KrylovKit, so this does not work anymore.
 function eig_state(m::AbstractMatrix, n, ::KrylovAlg; kwargs...)
     vals, vecs, info = eigsolve(
         m, n, :SR; kwargs...)
@@ -90,5 +90,5 @@ function eig_state(m::AbstractMatrix, n, ::KrylovAlg; kwargs...)
     return vecs[n]
 end
 
-ground_state(m, alg = KrylovAlg()) = eig_state(m, 1, alg)
-eig_state(m, n) = eig_state(m, n, KrylovAlg())
+ground_state(m, alg = ArnoldiAlg()) = eig_state(m, 1, alg)
+eig_state(m, n, alg = ArnoldiAlg()) = eig_state(m, n, alg)
