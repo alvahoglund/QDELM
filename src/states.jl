@@ -62,9 +62,9 @@ function eig_state(m::AbstractMatrix, n, ::ExactDiagonalizationAlg)
     eigenvectors[:, n]
 end
 
-struct ArnoldiAlg <: DiagonalizationAlg end
+struct ArnoldiAlg <: DiagonalizationAlg end # Make sure to use the #master branch of ArnoldiMethod.jl where the segfault issue is fixed
+# https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl/issues/149
 function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
-    # https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl/issues/149
     decomp,
     history = try
         partialschur(Hermitian(m), nev = n, which = :SR; kwargs...)

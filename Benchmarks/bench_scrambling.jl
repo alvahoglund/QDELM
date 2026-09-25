@@ -28,7 +28,6 @@ Base.@kwdef struct BenchSettings
     mode::Symbol = :latency       # :latency | :throughput (nthreads concurrent calls) | :both
     blas_threads::Int = 1         # 1 matches the threaded ensemble loop
     diag_max::Int = 1000          # skip dense diagonalization above this N
-    expprop_max::Int = 500       # skip dense exp (QPExpProp) above this N
     skip::Vector{String} = String[]
     csv::Union{Nothing, String} = nothing   # append results to this CSV file
 end
@@ -62,7 +61,6 @@ function skip_reason(name, alg, N, st, slow)
     name in st.skip && return "skipped: user"
     name in slow && return "skipped: too slow at a smaller size"
     alg isa Q.DiagonalizationPropagatorAlg && N > st.diag_max && return "skipped: N > diag_max"
-    alg isa Q.QPAlg{Q.QPExpProp} && N > st.expprop_max && return "skipped: N > expprop_max"
     return nothing
 end
 
@@ -141,7 +139,7 @@ function reference_solution(H, Ψ0, ts, st)
         return ref, maxcolerr(ref, alt), "diagonalization (cross-checked vs Chebyshev/Gershgorin 1e-13)"
     else
         ref, _ = Q.propagate_block(H, Ψ0, ts, tight)
-        alt, _ = Q.propagate_block(H, Ψ0, ts, Q.ExpUtilsLanczosPropagatorAlg(; tol = 1e-12))
+        alt, _ = Q.propagate_block(H, Ψ0, ts, Q.ExpUtilsLanczosPropagatorAlg(; tol = 1e-12, m = 100))
         return ref, maxcolerr(ref, alt), "Chebyshev/Gershgorin 1e-13 (cross-checked vs eu-lanczos 1e-12)"
     end
 end

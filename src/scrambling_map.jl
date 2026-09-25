@@ -725,7 +725,6 @@ end
                 for (tname, ts) in time_sets(ρ)
                     ref = exact_propagation(HH, Ψ0, ts)
                     for (name, alg, atol) in ALGS
-                        name == "legacy-krylov" && tname == "single long" && continue
                         @testset "$Hname | $tname | $name" begin
                             Us, info = Q.propagate_block(HH, Ψ0, ts, alg)
                             @test length(Us) == length(ts)
