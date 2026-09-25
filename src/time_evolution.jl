@@ -1,5 +1,5 @@
 ## Standard time evolution
-propagator(t, hamiltonian) = cis(-t * Matrix(hamiltonian))
+propagator(t, hamiltonian) = cis(-t * to_dense(hamiltonian))
 
 operator_time_evolution(propagator, operator) = propagator' * operator * propagator
 function operator_time_evolution(operator, t, hamiltonian)

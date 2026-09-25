@@ -1,5 +1,5 @@
 module QDELM
-using LinearAlgebra, Random, Arpack, SparseArrays, LinearMaps, Statistics
+using LinearAlgebra, Random, SparseArrays, LinearMaps, Statistics
 using ExponentialUtilities
 using Reexport
 @reexport using FermionicHilbertSpaces
@@ -7,7 +7,8 @@ using Reexport
                                         NonCommutativeProducts
 
 using Distributions: Normal
-using ArnoldiMethod, KrylovKit
+using ArnoldiMethod
+using TestItems, Test
 
 export tight_binding_system, hamiltonians, hamiltonian_dots, hamiltonian_interactions
 export random_separable_state, random_product_state, triplet_plus, singlet, ground_state,
@@ -19,6 +20,10 @@ export state_time_evolution, operator_time_evolution
 export set_dot_params, set_interaction_params
 export regression, get_X, get_Y, get_X_noisy, center_X, add_bias, preprocess_X,
        feature_transformation
+
+to_dense(s::AbstractSparseArray) = Array(s)
+to_dense(s::AbstractArray) = s
+
 include("quantum_dot_system.jl")
 include("hamiltonian_tight_binding.jl")
 include("states.jl")

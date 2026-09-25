@@ -4,17 +4,17 @@
 σy(i) = im * (f[i, :↓]' * f[i, :↑] - f[i, :↑]' * f[i, :↓])
 σz(i) = (f[i, :↑]' * f[i, :↑] - f[i, :↓]' * f[i, :↓])
 
-function nbr_op(coordinate)
+function nbr_op(coordinate, f = f)
     f[coordinate, :↑]' * f[coordinate, :↑] + f[coordinate, :↓]' * f[coordinate, :↓]
 end
-function nbr2_op(coordinate)
+function nbr2_op(coordinate, f = f)
     f[coordinate, :↑]' * f[coordinate, :↑] * f[coordinate, :↓]' * f[coordinate, :↓]
 end
 
 p(nbr_index, coordinate) = eval(Expr(:call, Symbol("p", nbr_index), coordinate))
-p0(coordinate) = 1 - p1(coordinate) - p2(coordinate) #Probability to measure 0 charge
-p1(coordinate) = nbr_op(coordinate) - 2 * nbr2_op(coordinate) # Probability to measure 1 charge
-p2(coordinate) = nbr2_op(coordinate) # Probability to measure 2 charges
+p0(coordinate, f = f) = 1 - p1(coordinate, f) - p2(coordinate, f) #Probability to measure 0 charge
+p1(coordinate, f = f) = nbr_op(coordinate, f) - 2 * nbr2_op(coordinate, f) # Probability to measure 1 charge
+p2(coordinate, f = f) = nbr2_op(coordinate, f) # Probability to measure 2 charges
 
 const PauliKeys = (:σ0, :σx, :σy, :σz)
 function paulis(H, Hfinal = H)
@@ -77,7 +77,7 @@ function charge_measurements(grid)
     vcat(single_charge_measurements(grid), double_charge_measurements(grid))
 end
 
-matrix_representation_ops(ops, H) = map(Base.Fix2(matrix_representation, H), ops)
+matrix_representation_ops(ops, H) = map(Base.Fix2(representation, H), ops)
 
 function charge_measurements(qd_system::QuantumDotSystem)
     matrix_representation_ops(
@@ -113,18 +113,18 @@ end
 function correlated_measurements(qd_system)
     matrix_representation_ops(
         correlated_measurements(
-            qd_system.grids.total, qn_sector(qd_system.H_total)), qd_system.H_total)
+            qd_system.grids.total, only(quantumnumbers(qd_system.H_total))), qd_system.H_total)
 end
 
 ## ============= Spin measurements ======================
 
 #Operator for total spin S^2 on coodinate i 
-Si2(coordinate_i, H_i) = matrix_representation(3 / 4 * p1(coordinate_i), H_i)
+Si2(coordinate_i, H_i) = representation(3 / 4 * p1(coordinate_i), H_i)
 
 # Operator for S_i ⋅ S_j
 function Sij(coordinate_i, coordinate_j, H)
-    Hi = hilbert_space(labels((coordinate_i,)), NumberConservation(1))
-    Hj = hilbert_space(labels((coordinate_j,)), NumberConservation(1))
+    Hi = hilbert_space(f, labels((coordinate_i,)), NumberConservation(1))
+    Hj = hilbert_space(f, labels((coordinate_j,)), NumberConservation(1))
     ps = pauli_strings((Hi, Hj), H)
     1 / 4 * sum(ps[σ, σ] for σ in [:σx, :σy, :σz])
 end

@@ -1,18 +1,18 @@
 
-@testset "Hamiltonian of tight binding model" begin
+@testitem "Hamiltonian of tight binding model" begin
     qd_system = tight_binding_system(2, 3, 1)
     hams = hamiltonians(qd_system.grids)
-    h_main = matrix_representation(hams.main, qd_system.H_total)
-    h_res = matrix_representation(hams.res, qd_system.H_total)
-    h_int = matrix_representation(hams.intersection, qd_system.H_total)
-    h_tot = matrix_representation(hams.total, qd_system.H_total)
+    h_main = representation(hams.main, qd_system.H_total)
+    h_res = representation(hams.res, qd_system.H_total)
+    h_int = representation(hams.intersection, qd_system.H_total)
+    h_tot = representation(hams.total, qd_system.H_total)
     @test h_main' ≈ h_main
     @test h_res' ≈ h_res
     @test h_int' ≈ h_int
     @test h_tot' ≈ h_tot
 end
 
-@testset "Sum of Hamiltonians" begin
+@testitem "Sum of Hamiltonians" begin
     # Check that H_main + H_res + H_intersection = H_total_system    
     qd_system = tight_binding_system(3, 5, 2)
     ϵ_func() = 2
@@ -37,6 +37,6 @@ end
                 hamiltonian_interactions(
         interaction_params, qd_system.grids.total)
 
-    @test matrix_representation(hams_sum.total, qd_system.H_total) ≈
-          matrix_representation(ham_total, qd_system.H_total)
+    @test representation(hams_sum.total, qd_system.H_total) ≈
+          representation(ham_total, qd_system.H_total)
 end

@@ -20,22 +20,12 @@ function triplet_minus()
 end
 
 function def_state(state_name, H)
-    vac_ind = FermionicHilbertSpaces.state_index(FockNumber(0), H)
-    H2,
-    v0 = if ismissing(vac_ind)
-        Haux = hilbert_space(keys(H), push!(copy(basisstates(H)), FockNumber(UInt(0))))
-        Haux, vac_state(Haux)
-    else
-        H, vac_state(H)
-    end
-    v = matrix_representation(state_name(), H2; projection = true) * v0
-    if ismissing(vac_ind)
-        v = v[1:(end - 1)]
-    end
-    return normalize!(v)
+    vacuum = FermionicHilbertSpaces.SymbolicState(H, FockNumber(0))
+    state = state_name() * vacuum
+    representation(state, H)
 end
 
-max_mixed_state(H) = Matrix{ComplexF64}(I, dim(H), dim(H)) / dim(H)
+max_mixed_state(H) = I(dim(H))/dim(H) #Matrix{ComplexF64}(I, dim(H), dim(H)) / dim(H)
 
 function werner_state(state_name, p, H)
     (1 - p) * density_matrix(def_state(state_name, H)) + p * max_mixed_state(H)
@@ -68,13 +58,13 @@ abstract type DiagonalizationAlg end
 struct ExactDiagonalizationAlg <: DiagonalizationAlg end
 
 function eig_state(m::AbstractMatrix, n, ::ExactDiagonalizationAlg)
-    eigenvalues, eigenvectors = eigen(Matrix(m))
+    eigenvalues, eigenvectors = eigen(to_dense(m))
     eigenvectors[:, n]
 end
 
-struct ArnoldiAlg <: DiagonalizationAlg end
+struct ArnoldiAlg <: DiagonalizationAlg end # Make sure to use the #master branch of ArnoldiMethod.jl where the segfault issue is fixed
+# https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl/issues/149
 function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
-    # https://github.com/JuliaLinearAlgebra/ArnoldiMethod.jl/issues/149
     decomp,
     history = try
         partialschur(Hermitian(m), nev = n, which = :SR; kwargs...)
@@ -89,8 +79,8 @@ function eig_state(m::AbstractMatrix, n, ::ArnoldiAlg; kwargs...)
     return vecs[:, idx]
 end
 
-struct KrylovAlg <: DiagonalizationAlg end
 
+struct KrylovAlg <: DiagonalizationAlg end # Removed KrylovKit, so this does not work anymore.
 function eig_state(m::AbstractMatrix, n, ::KrylovAlg; kwargs...)
     vals, vecs, info = eigsolve(
         m, n, :SR; kwargs...)
@@ -100,5 +90,5 @@ function eig_state(m::AbstractMatrix, n, ::KrylovAlg; kwargs...)
     return vecs[n]
 end
 
-ground_state(m, alg = KrylovAlg()) = eig_state(m, 1, alg)
-eig_state(m, n) = eig_state(m, n, KrylovAlg())
+ground_state(m, alg = ArnoldiAlg()) = eig_state(m, 1, alg)
+eig_state(m, n, alg = ArnoldiAlg()) = eig_state(m, n, alg)
