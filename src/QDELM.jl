@@ -31,6 +31,8 @@ include("time_evolution.jl")
 include("measurements.jl")
 include("effective_measurements.jl")
 include("scrambling_map.jl")
+include("scrambling_map_cheby.jl")
+include("scrambling_map_qp.jl")
 include("regression.jl")
 
 end
