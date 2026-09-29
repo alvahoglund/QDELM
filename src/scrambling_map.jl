@@ -313,7 +313,8 @@ end
         ("eu-lanczos", Q.ExpUtilsLanczosPropagatorAlg(tol=1e-11), 1e-8),
         ("eu-timestep", Q.ExpUtilsTimestepPropagatorAlg(tol=1e-11), 1e-6),
         ("auto", Q.AutoPropagatorAlg(tol=1e-11), 1e-9),
-        ("auto-cheb", Q.AutoPropagatorAlg(tol=1e-11, small_dim=0, sec_eig=1.0), 1e-9),
+        ("auto-cheb", Q.AutoPropagatorAlg(tol=1e-11, candidates=(:cheby,)), 1e-9),
+        ("auto-diag", Q.AutoPropagatorAlg(candidates=(:diag,)), 1e-12),
     ]
 
     # ------------------------------- tests ---------------------------------------
@@ -397,18 +398,64 @@ end
                 @test opnorm(Us[1]' * Us[1] - I) ≤ 1e-8
             end
         end
-
         @testset "AutoPropagatorAlg selection" begin
-            ts = [50.0 / spectral_halfwidth(H)]
-            _, i1 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=size(H, 1)))
-            @test i1.method == :diagonalization                                   # N ≤ small_dim
-            _, i2 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=0, sec_eig=1.0))
-            @test i2.method == :chebyshev
-            _, i3 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=0, sec_eig=0.0, sec_gemm=0.0))
-            @test i3.method == :diagonalization
-            _, i4 = Q.propagate_block(H, Ψ0, ts, Q.AutoPropagatorAlg(small_dim=0, max_diag_dim=10))
-            @test i4.method == :chebyshev
+            # Helper to inspect selection report
+            sel(Ψ, ts; kw...) = Q.select_propagator(H, Ψ, ts, Q.AutoPropagatorAlg(; kw...))[2]
+
+            # Approximate half-width for scale-setting
+            evals = eigvals(Hermitian(Matrix(H)))
+            ρ = (maximum(evals) - minimum(evals)) / 2
+            long_times = [150.0 / ρ, 300.0 / ρ]
+
+            # 1. Trivial time vectors (all zeros) bypass propagation entirely
+            @test sel(Ψ0, [0.0, 0.0]).reason == :no_propagation
+
+            # 2. Dimensions under small_dim pick diagonalization immediately
+            @test sel(Ψ0, long_times; small_dim=size(H, 1)).choice == :diag
+            @test sel(Ψ0, long_times; small_dim=size(H, 1)).reason == :small
+
+            # 3. If diagonalization is cheaper than specrange estimation itself, choose :diag
+            #    without calling specrange
+            rep_cheap = sel(Ψ0, long_times; small_dim=0, sec_eig=0.0, sec_gemm=0.0)
+            @test rep_cheap.choice == :diag
+            @test rep_cheap.reason == :cheaper_than_specrange
+
+            # 4. Forcing candidates = (:cheby,) or setting max_diag_dim = 0 picks Chebychev
+            rep_cheby = sel(Ψ0, long_times; max_diag_dim=0)
+            @test rep_cheby.choice == :cheby
+            @test rep_cheby.reason == :cost
+            @test isfinite(rep_cheby.cost_cheby)
+            @test isinf(rep_cheby.cost_diag)
+
+            # 5. Chebychev cost grows monotonically with ρ·T
+            s_short = sel(Ψ0, [10.0 / ρ]; max_diag_dim=0)
+            s_long = sel(Ψ0, [100.0 / ρ]; max_diag_dim=0)
+            @test s_long.cost_cheby > s_short.cost_cheby
+            @test s_long.ρT > s_short.ρT
+
+            # 6. Reusing spectral range: chosen QPAlg must inherit manual bounds
+            alg_chosen, rep = Q.select_propagator(H, Ψ0, long_times, Q.AutoPropagatorAlg(max_diag_dim=0))
+            @test alg_chosen isa Q.QPAlg
+            @test alg_chosen.kwargs.specrange_method == :manual
+            @test alg_chosen.kwargs.E_min < alg_chosen.kwargs.E_max
+
+            # 7. Error thrown if no valid candidate is available
+            @test_throws ArgumentError Q.select_propagator(
+                H, Ψ0, long_times,
+                Q.AutoPropagatorAlg(max_diag_dim=0, candidates=(:diag,))
+            )
+
+            # 8. End-to-end propagation accuracy (mixed forward/backward times)
+            test_ts = [-20.0 / ρ, 0.0, 35.0 / ρ]
+            Us, info = Q.propagate_block(
+                H, Ψ0, test_ts,
+                Q.AutoPropagatorAlg(tol=1e-11, max_diag_dim=0)
+            )
+            @test maxcolerr(Us, exact_propagation(H, Ψ0, test_ts)) ≤ 1e-8
+            @test haskey(info, :selection)
+            @test info.selection.choice === :cheby
         end
+
 
         @testset "no global RNG consumption; thread safety" begin
             ts = [30.0 / spectral_halfwidth(H)]

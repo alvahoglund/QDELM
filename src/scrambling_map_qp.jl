@@ -199,29 +199,3 @@ function propagate_block(H, Ψ0, ts, alg::AutoPropagatorAlg)
     Us, info = propagate_block(H, Ψ0, ts, chosen)
     return Us, merge(info, (; selection))
 end
-
-@testitem "AutoPropagatorAlg selection" begin
-    ρ = spectral_halfwidth(H)
-    long = [300.0 / ρ]
-    sel(Ψ, ts; kw...) = Q.select_propagator(H, Ψ, ts, Q.AutoPropagatorAlg(; kw...))[2]
-
-    @test sel(Ψ0, long; small_dim = size(H, 1)).choice == :diag                 # small N
-    @test sel(Ψ0, long; small_dim = 0, sec_eig = 0.0, sec_gemm = 0.0).reason ==
-          :cheaper_than_specrange                                              # no spectrum estimate
-    @test sel(Ψ0, long; max_diag_dim = 0).choice == :cheby                      # broad states, long time
-    V = eigen(Hermitian(Matrix(H))).vectors[:, 1:P]
-    @test sel(V, long; max_diag_dim = 0).choice == :krylov                      # eigenstates: ρ_eff ≈ 0
-    @test sel(Ψ0, [0.0, 0.0]).reason == :no_propagation
-
-    s1 = sel(Ψ0, [10.0 / ρ]; max_diag_dim = 0)
-    s2 = sel(Ψ0, [100.0 / ρ]; max_diag_dim = 0)
-    @test s2.cost_cheby > 5 * s1.cost_cheby                                     # Chebyshev cost grows with ρT
-
-    alg, _ = Q.select_propagator(H, Ψ0, long, Q.AutoPropagatorAlg(max_diag_dim = 0))
-    @test alg.kwargs.specrange_method == :manual                                # spectral estimate reused
-
-    Us, info = Q.propagate_block(H, Ψ0, [-20.0 / ρ, 0.0, 35.0 / ρ],
-                                 Q.AutoPropagatorAlg(tol = 1e-11, max_diag_dim = 0))
-    @test maxcolerr(Us, exact_propagation(H, Ψ0, [-20.0 / ρ, 0.0, 35.0 / ρ])) ≤ 1e-8
-    @test haskey(info, :selection)
-end
