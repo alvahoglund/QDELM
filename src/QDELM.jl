@@ -4,7 +4,7 @@ using ExponentialUtilities
 using Reexport
 @reexport using FermionicHilbertSpaces
 @reexport using FermionicHilbertSpaces: indices, sector, AbstractHilbertSpace,
-                                        NonCommutativeProducts
+    NonCommutativeProducts
 
 using Distributions: Normal
 using ArnoldiMethod
@@ -12,14 +12,14 @@ using TestItems, Test
 
 export tight_binding_system, hamiltonians, hamiltonian_dots, hamiltonian_interactions
 export random_separable_state, random_product_state, triplet_plus, singlet, ground_state,
-       def_state, density_matrix, matrix_representation_hams
+    def_state, density_matrix, matrix_representation_hams
 export charge_measurements, effective_measurement, scrambling_map, expectation_value,
-       charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix,
-       add_noise, to_real
+    charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix,
+    add_noise, to_real
 export state_time_evolution, operator_time_evolution
 export set_dot_params, set_interaction_params
 export regression, get_X, get_Y, get_X_noisy, center_X, add_bias, preprocess_X,
-       feature_transformation
+    feature_transformation
 
 to_dense(s::AbstractSparseArray) = Array(s)
 to_dense(s::AbstractArray) = s
@@ -31,7 +31,7 @@ include("time_evolution.jl")
 include("measurements.jl")
 include("effective_measurements.jl")
 include("scrambling_map.jl")
-include("scrambling_map_cheby.jl")
+include("scrambling_map_legacy.jl")
 include("scrambling_map_qp.jl")
 include("regression.jl")
 

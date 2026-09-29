@@ -1,20 +1,23 @@
 # =============================================================================
 # scrambling_map_qp.jl — QuantumPropagators.jl backend + automatic selection.
 #
-# Include AFTER scrambling_map.jl. Enclosing module needs:
-#     using QuantumPropagators
-#     using ExponentialUtilities   # only for method = ExponentialUtilities
-# Uses from scrambling_map.jl: AbstractStatePropagatorAlg, DiagonalizationPropagatorAlg,
-# _operator, _tvec.
-# All numerics (Chebychev coefficients, spectral range, error control) are done by
-# QuantumPropagators; this file maps output times onto QP grids and picks the method.
+# Include AFTER scrambling_map.jl. Uses from it: AbstractStatePropagatorAlg,
+# DiagonalizationPropagatorAlg, _operator, _tvec.
+#
+# QPAlg: maps the requested output times onto QuantumPropagators time grids
+#   (forward/backward sweeps, one cached propagator per distinct step). All
+#   numerics (Chebyshev coefficients, spectral range, error control) are done
+#   by QuantumPropagators.
+# AutoPropagatorAlg: the default. Estimates the run time of diagonalization vs
+#   QPAlg(QP.Cheby) with a simple cost model and runs the cheaper one; the
+#   spectral range estimated during selection is reused by Chebyshev.
 # =============================================================================
 
 import QuantumPropagators
 const QP = QuantumPropagators
 
 # -----------------------------------------------------------------------------
-# 1. QPAlg: thin wrapper around QP.init_prop / prop_step!
+# Import the propagator interface from QuantumPropagators.jl, use Chebychev by default.
 # -----------------------------------------------------------------------------
 """
     QPAlg(method = QP.Cheby; max_dt = Inf, block = false, init_prop_kwargs...)
@@ -37,19 +40,22 @@ struct QPAlg{M,KW<:NamedTuple} <: AbstractStatePropagatorAlg
     block::Bool
     kwargs::KW
 end
-QPAlg(method = QP.Cheby; max_dt::Real = Inf, block::Bool = false, kwargs...) =
+QPAlg(method=QP.Cheby; max_dt::Real=Inf, block::Bool=false, kwargs...) =
     QPAlg(method, Float64(max_dt), block, (; kwargs...))
 
 _qp_name(m::Module) = Symbol(:qp_, nameof(m))
 _qp_name(m) = Symbol(:qp_, m)
+
+"QP spectral range with a local seeded RNG: deterministic, and leaves the global RNG untouched."
+_specrange(H; kwargs...) = QP.SpectralRange.specrange(H, :auto; rng=Random.Xoshiro(0x5eed), kwargs...)
 
 "Chebychev: estimate the spectral range once (not in every init_prop), unless given."
 function _init_prop_kwargs(H, alg::QPAlg)
     kw = alg.kwargs
     is_cheby = alg.method === QP.Cheby || alg.method === :Cheby
     (is_cheby && !haskey(kw, :specrange_method)) || return kw
-    E_min, E_max = QP.SpectralRange.specrange(H, :auto)
-    return merge(kw, (; specrange_method = :manual, E_min, E_max))
+    E_min, E_max = _specrange(H)
+    return merge(kw, (; specrange_method=:manual, E_min, E_max))
 end
 
 """
@@ -68,7 +74,7 @@ function _qp_sweeps(tsv)
         (; backward, idx, δs)
     end
 end
-_step_key(δ) = round(δ; sigdigits = 12)
+_step_key(δ) = round(δ; sigdigits=12)
 
 function propagate_block(H, Ψ0, ts, alg::QPAlg)
     Hop = _operator(H)
@@ -84,8 +90,8 @@ function propagate_block(H, Ψ0, ts, alg::QPAlg)
             if δ > 0
                 prop = get!(props, (sw.backward, _step_key(δ))) do
                     nsub = isfinite(alg.max_dt) ? max(1, ceil(Int, δ / alg.max_dt)) : 1
-                    QP.init_prop(ψ, Hop, collect(range(0.0, δ; length = nsub + 1));
-                        method = alg.method, backward = sw.backward, inplace = true, kw...)
+                    QP.init_prop(ψ, Hop, collect(range(0.0, δ; length=nsub + 1));
+                        method=alg.method, backward=sw.backward, inplace=true, kw...)
                 end
                 QP.reinit_prop!(prop, ψ)
                 while QP.prop_step!(prop) !== nothing
@@ -96,12 +102,12 @@ function propagate_block(H, Ψ0, ts, alg::QPAlg)
             Us[j][:, cols] .= ψ
         end
     end
-    return Us, (; method = _qp_name(alg.method), err_est = NaN, nmatvec = -1,
-                  nsteps, nprops = length(props))
+    return Us, (; method=_qp_name(alg.method), err_est=NaN, nmatvec=-1,
+        nsteps, nprops=length(props))
 end
 
 # -----------------------------------------------------------------------------
-# 2. Automatic selection: Diagonalization vs QP.Cheby
+# Automatic selection: Diagonalization vs QP.Cheby
 # -----------------------------------------------------------------------------
 """
     AutoPropagatorAlg(; tol = 1e-10, candidates = (:diag, :cheby), kwargs...)
@@ -149,7 +155,7 @@ function _step_multiplicities(tsv)
     return steps
 end
 
-_ncheb(Δ, δ, tol) = length(QP.Cheby.cheby_coeffs(Δ, δ; limit = tol)) - 1
+_ncheb(Δ, δ, tol) = length(QP.Cheby.cheby_coeffs(Δ, δ; limit=tol)) - 1
 
 function select_propagator(H, Ψ0, ts, a::AutoPropagatorAlg)
     Hop = _operator(H)
@@ -157,18 +163,18 @@ function select_propagator(H, Ψ0, ts, a::AutoPropagatorAlg)
     N, p = size(Ψ0)
     nt = length(tsv)
     want(c) = c in a.candidates
-    rep = (; choice = :none, reason = :none, cost_diag = NaN, cost_cheby = NaN,
-             Δ = NaN, ρT = NaN)
+    rep = (; choice=:none, reason=:none, cost_diag=NaN, cost_cheby=NaN,
+        Δ=NaN, ρT=NaN)
     diag = DiagonalizationPropagatorAlg()
 
-    all(iszero, tsv) && return QPAlg(), merge(rep, (; reason = :no_propagation))
+    all(iszero, tsv) && return QPAlg(), merge(rep, (; reason=:no_propagation))
     can_diag = want(:diag) && N ≤ a.max_diag_dim
     can_cheby = want(:cheby)
     cost_diag = can_diag ? _cost_diag(Hop, N, p, nt, a) : Inf
     rep = merge(rep, (; cost_diag))
 
     if can_diag && (N ≤ a.small_dim || !can_cheby)
-        return diag, merge(rep, (; choice = :diag, reason = :small))
+        return diag, merge(rep, (; choice=:diag, reason=:small))
     end
     can_cheby || throw(ArgumentError("AutoPropagatorAlg: no admissible candidate for N = $N"))
 
@@ -176,10 +182,10 @@ function select_propagator(H, Ψ0, ts, a::AutoPropagatorAlg)
     vop = a.sec_vec * N
     m_sr = a.specrange_matvecs
     if cost_diag ≤ m_sr * (mv + m_sr / 2 * vop)
-        return diag, merge(rep, (; choice = :diag, reason = :cheaper_than_specrange))
+        return diag, merge(rep, (; choice=:diag, reason=:cheaper_than_specrange))
     end
 
-    E_min, E_max = QP.SpectralRange.specrange(Hop, :auto; a.specrange_kwargs...)
+    E_min, E_max = _specrange(Hop; a.specrange_kwargs...)
     Δ = max(E_max - E_min, eps() * max(1.0, abs(E_max)))
     steps = _step_multiplicities(tsv)
     T = maximum(abs, tsv)
@@ -188,10 +194,10 @@ function select_propagator(H, Ψ0, ts, a::AutoPropagatorAlg)
 
     choice = cost_diag ≤ cost_cheby ? :diag : :cheby
     chosen = choice === :diag ? diag :
-             QPAlg(QP.Cheby; block = a.block, cheby_coeffs_limit = a.tol,
-                   specrange_method = :manual, E_min, E_max)
+             QPAlg(QP.Cheby; block=a.block, cheby_coeffs_limit=a.tol,
+        specrange_method=:manual, E_min, E_max)
 
-    return chosen, merge(rep, (; choice, reason = :cost, cost_cheby, Δ, ρT = (Δ / 2) * T))
+    return chosen, merge(rep, (; choice, reason=:cost, cost_cheby, Δ, ρT=(Δ / 2) * T))
 end
 
 function propagate_block(H, Ψ0, ts, alg::AutoPropagatorAlg)

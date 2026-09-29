@@ -1,6 +1,172 @@
+# =============================================================================
+# scrambling_map_legacy.jl — earlier state-path propagators.
+#
+# Not used by default; superseded by QPAlg /
+# AutoPropagatorAlg (scrambling_map_qp.jl). Kept for benchmarking and as
+# independent cross-checks in the tests.
+#
+# Include AFTER scrambling_map.jl. Enclosing module needs:
+#     using LinearAlgebra, SparseArrays, Random
+#     using ExponentialUtilities
+#
+# Contents:
+#   ExpUtilsLanczosPropagatorAlg  
+#   ExpUtilsTimestepPropagatorAlg   
+#   KrylovPropagatorAlg
+#   ChebyshevPropagatorAlg
+# =============================================================================
 
 # -----------------------------------------------------------------------------
-# 4. Spectral bounds
+# ExponentialUtilities: lanczos! on H (complex time) + a-posteriori step control
+# -----------------------------------------------------------------------------
+"""
+    ExpUtilsLanczosPropagatorAlg(; m = 30, tol = 1e-10, breakdown_tol = 1e-13, max_substeps = 100_000)
+Lanczos basis from `ExponentialUtilities.lanczos!` on the Hermitian H (short recurrence,
+no O(m²N) Arnoldi orthogonalization). Each basis gives the largest dt with Saad's estimate
+β·h_{m+1,m}·|e_mᵀ exp(-i dt T_m) e_1| ≤ tol_rate·dt; rejections cost no matvecs.
+Uses KrylovSubspace internals (m, beta, H, V).
+"""
+Base.@kwdef struct ExpUtilsLanczosPropagatorAlg <: AbstractStatePropagatorAlg
+    m::Int = 30
+    tol::Float64 = 1e-10
+    breakdown_tol::Float64 = 1e-13
+    max_substeps::Int = 100_000
+end
+
+function _eu_lanczos_step!(ψ, H, δ, Ks, m, tol_rate, alg)
+    iszero(δ) && return 0.0, 0
+    remaining = δ
+    err = 0.0
+    nmv = 0
+    nsub = 0
+    while !iszero(remaining)
+        (nsub += 1) > alg.max_substeps && error("ExpUtilsLanczosPropagatorAlg: too many substeps")
+        ExponentialUtilities.lanczos!(Ks, H, ψ; m=m, tol=alg.breakdown_tol)
+        mk = Ks.m
+        β = Ks.beta
+        nmv += mk
+        α = [real(Ks.H[i, i]) for i in 1:mk]
+        b = [real(Ks.H[i+1, i]) for i in 1:(mk-1)]
+        hnext = abs(Ks.H[mk+1, mk])
+        F = eigen(SymTridiagonal(α, b))
+        v1 = F.vectors[1, :]
+        vm = F.vectors[mk, :]
+        est(dt) = β * hnext * abs(sum(vm .* cis.(-dt .* F.values) .* v1))
+        dt = remaining
+        e = est(dt)
+        if mk == m                        # no happy breakdown → control the step
+            for _ in 1:100
+                e ≤ tol_rate * abs(dt) && break
+                dt *= clamp(0.9 * (tol_rate * abs(dt) / e)^(1 / max(mk - 1, 1)), 0.05, 0.9)
+                e = est(dt)
+            end
+            e ≤ tol_rate * abs(dt) || error("ExpUtilsLanczosPropagatorAlg: step-size control failed")
+        end
+        y = F.vectors * (cis.(-dt .* F.values) .* v1)
+        mul!(ψ, view(Ks.V, :, 1:mk), y, β, false)
+        err += e
+        remaining = abs(remaining - dt) ≤ 1e-14 * abs(δ) ? 0.0 : remaining - dt
+    end
+    return err, nmv
+end
+
+function propagate_block(H, Ψ0, ts, alg::ExpUtilsLanczosPropagatorAlg)
+    Hop = _operator(H)
+    tsv = _tvec(ts)
+    δs = _increments(tsv)
+    N, p = size(Ψ0)
+    m = min(alg.m, N)
+    L = sum(abs, δs; init=0.0)
+    tol_rate = alg.tol / max(L, floatmin(Float64))
+    Ks = ExponentialUtilities.KrylovSubspace{ComplexF64}(N, m)
+    Us = [Matrix{ComplexF64}(undef, N, p) for _ in tsv]
+    ψ = Vector{ComplexF64}(undef, N)
+    nmv = 0
+    errmax = 0.0
+    for n in 1:p
+        ψ .= view(Ψ0, :, n)
+        errn = 0.0
+        for (j, δ) in enumerate(δs)
+            e, mv = _eu_lanczos_step!(ψ, Hop, δ, Ks, m, tol_rate, alg)
+            errn += e
+            nmv += mv
+            Us[j][:, n] .= ψ
+        end
+        errmax = max(errmax, errn)
+    end
+    return Us, (; method=:expu_lanczos, err_est=errmax, nmatvec=nmv)
+end
+
+# -----------------------------------------------------------------------------
+# ExponentialUtilities: expv_timestep (adaptive, native multi-time output)
+# -----------------------------------------------------------------------------
+"""
+    ExpUtilsTimestepPropagatorAlg(; tol = 1e-10, m = 30, iop = 2, adaptive = true)
+`expv_timestep(sorted |ts|, ∓iH, b; adaptive, tol, m, iop)` per column. ts must be real,
+so the operator is skew-Hermitian; `iop = 2` (incomplete orthogonalization) is exact for
+skew-Hermitian operators in exact arithmetic and costs like Lanczos. All times must share
+a sign. No error estimate is returned.
+"""
+Base.@kwdef struct ExpUtilsTimestepPropagatorAlg <: AbstractStatePropagatorAlg
+    tol::Float64 = 1e-10
+    m::Int = 30
+    iop::Int = 2
+    adaptive::Bool = true
+end
+
+function propagate_block(H, Ψ0, ts, alg::ExpUtilsTimestepPropagatorAlg)
+    Hop = _operator(H)
+    tsv = _tvec(ts)
+    N, p = size(Ψ0)
+    s = all(≥(0), tsv) ? 1 : all(≤(0), tsv) ? -1 :
+                             throw(ArgumentError("ExpUtilsTimestepPropagatorAlg: all times must have the same sign"))
+    τ = abs.(tsv)
+    nz = findall(!iszero, τ)
+    perm = nz[sortperm(τ[nz])]
+    Us = [Matrix{ComplexF64}(Ψ0) for _ in tsv]       # zero times stay Ψ0
+    isempty(perm) && return Us, (; method=:expu_timestep, err_est=NaN, nmatvec=0)
+    A = (-im * s) .* Hop
+    τs = τ[perm]
+    for n in 1:p
+        U = ExponentialUtilities.expv_timestep(copy(τs), A, Vector{ComplexF64}(Ψ0[:, n]);
+            adaptive=alg.adaptive, tol=alg.tol, m=min(alg.m, N),
+            iop=alg.iop, ishermitian=false)
+        U = reshape(U, N, :)
+        for (jj, j) in enumerate(perm)
+            Us[j][:, n] .= view(U, :, jj)
+        end
+    end
+    return Us, (; method=:expu_timestep, err_est=NaN, nmatvec=-1)
+end
+
+# -----------------------------------------------------------------------------
+# Krylov 
+# -----------------------------------------------------------------------------
+struct KrylovPropagatorAlg <: AbstractStatePropagatorAlg
+    krylov_dim::Int
+    tol::Float64            # NOTE: happy-breakdown threshold, not an accuracy target
+end
+KrylovPropagatorAlg(; krylov_dim=200, tol=1e-6) = KrylovPropagatorAlg(krylov_dim, tol)
+
+function propagate_block(H, Ψ0, ts, alg::KrylovPropagatorAlg)
+    tsv = _tvec(ts)
+    N, p = size(Ψ0)
+    iH = -im .* H
+    Ks = KrylovSubspace{ComplexF64}(N, alg.krylov_dim)
+    nmv = 0
+    Us = map(tsv) do t
+        iszero(t) && return Matrix{ComplexF64}(Ψ0)
+        stack(1:p) do n
+            arnoldi!(Ks, iH, Vector{ComplexF64}(Ψ0[:, n]); tol=alg.tol)
+            nmv += Ks.m
+            expv(t, Ks)
+        end
+    end
+    return Us, (; method=:krylov_legacy, err_est=NaN, nmatvec=nmv)
+end
+
+# -----------------------------------------------------------------------------
+# Chebyshev
 # -----------------------------------------------------------------------------
 """
     gershgorin_bounds(H) -> (λlo, λhi) or nothing
@@ -80,9 +246,6 @@ function lanczos_bounds(H; steps::Int=30, seed=0x5eed)
     return (θ[1] - β[m], θ[end] + β[m])
 end
 
-# -----------------------------------------------------------------------------
-# 5. Chebyshev
-# -----------------------------------------------------------------------------
 """
     bessel_j_sequence(x) -> J with J[k+1] ≈ J_k(x), k = 0..M, x ≥ 0
 Miller backward recurrence normalized by J_0 + 2Σ J_{2k} = 1. Entries beyond M are
@@ -318,3 +481,4 @@ function propagate_block(H, Ψ0, ts, alg::ChebyshevPropagatorAlg)
     Us, info = res
     return Us, merge(info, (; restarted, guaranteed))
 end
+
