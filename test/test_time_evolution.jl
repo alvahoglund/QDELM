@@ -1,5 +1,6 @@
 
-@testset "State and operator evolution" begin
+@testitem "State and operator evolution" begin
+    using LinearAlgebra
     ρ = rand(ComplexF64, 4, 4) + hc
     ρ = ρ ./ tr(ρ)
     ham = (rand(ComplexF64, 4, 4) + hc) / 2
@@ -15,12 +16,12 @@
     @test exp_value_op ≈ exp_value_ρ
 end
 
-@testset "Effective measurements & time evolution" begin
-    qd_system = tight_binding_system(2, 3, 1)
+@testitem "Effective measurements & time evolution" begin
+    qd_system = tight_binding_system(2, 2, 1)
     seed = 2
     hams = hamiltonians(qd_system.grids, seed)
 
-    ham_res = matrix_representation(hams.res, qd_system.H_res)
+    ham_res = representation(hams.res, qd_system.H_res)
     ψ_res = ground_state(ham_res)
     ρres = ψ_res * ψ_res'
 
@@ -37,7 +38,7 @@ end
     measurements = QDELM.charge_probabilities(qd_system)
 
     t = 10
-    ham_total = matrix_representation(hams.total, qd_system.H_total)
+    ham_total = representation(hams.total, qd_system.H_total)
 
     time_evolved_states = map(
         total_state -> state_time_evolution(total_state, t, ham_total), total_states)

@@ -247,9 +247,9 @@ end
 function matrix_representation_hams(hams::Hamiltonians, qd_system)
     Hamiltonians(
         hams.main,
-        matrix_representation(hams.res, qd_system.H_res),
+        representation(hams.res, qd_system.H_res),
         hams.intersection,
-        matrix_representation(hams.total, qd_system.H_total),
+        representation(hams.total, qd_system.H_total),
         hams.dot_params_main,
         hams.dot_params_res,
         hams.interaction_params
