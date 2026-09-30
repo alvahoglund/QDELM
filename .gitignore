@@ -2,3 +2,4 @@
 *.txt
 *.jld2
 /Figures/*
+Manifest.toml
