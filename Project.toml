@@ -29,10 +29,10 @@ FermionicHilbertSpaces = {rev = "main", url = "https://github.com/cvsvensson/Fer
 [compat]
 ArnoldiMethod = "0.4"
 Distributions = "0.25"
-FermionicHilbertSpaces = "0.10.0"
+FermionicHilbertSpaces = "0.10"
 JLD2 = "0.6"
-OhMyThreads = "0.8.6"
-QuantumPropagators = "0.9.1"
+OhMyThreads = "0.8"
+QuantumPropagators = "0.9"
 Reexport = "1"
 Statistics = "1"
 Test = "1"

@@ -1,8 +1,8 @@
 function mse_against_training_size(
-        nbr_train_states_list, mse, mse_diff, weight_diff, S, xscale = log10)
+        nbr_train_states_list, mse, mse_diff, weight_diff, S; xscale = log10, title = nothing, legend = true)
     fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "Number of training states",
-        ylabel = "MSE", yscale = log10, xscale = xscale)
+    ax = Axis(fig[1, 1]; xlabel = "Number of training states",
+        ylabel = "MSE", yscale = log10, xscale = xscale, title)
     scatter!(ax, nbr_train_states_list, mse, label = "MSE")
     lines!(ax, nbr_train_states_list, mse)
     scatter!(ax, nbr_train_states_list, weight_diff,
@@ -14,7 +14,7 @@ function mse_against_training_size(
     vlines!(ax, [16], color = :grey, linestyle = :dash, label = "16 training states")
     vlines!(ax, [size(S, 1)], color = :black, linestyle = :dash,
         label = "$(size(S, 1)) training states = rows in S")
-    axislegend(ax)
+    legend && axislegend(ax)
     return fig
 end
 

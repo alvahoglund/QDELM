@@ -7,6 +7,7 @@ scheduler = DynamicScheduler()
 ## Load system
 S = load("DefaultSystems/scrambling_map_D.jld2", "S")
 sys = load("DefaultSystems/scrambling_map_D.jld2", "sys")
+measurementset = load("DefaultSystems/scrambling_map_D.jld2", "measurements")
 
 Pm, Pm_dict = QDELM.pauli_matrix(sys.Hs_main, sys.H_main)
 B = 1/2 .* Pm[:, 2:end]
@@ -32,7 +33,7 @@ datasets = (X_train = get_X(S, Ω_train),
 ## Noise free, linear scale, vary training size
 nbr_train_states_list = [i for i in range(1, 100)]
 
-@profview @time result_noise_free = tmap(
+result_noise_free = tmap(
     nbr_train_states -> fit_and_compare(;
         X_train = datasets.X_train[:, 1:nbr_train_states], X_test = datasets.X_test,
         Y_train = datasets.Y_train[:, 1:nbr_train_states], Y_test = datasets.Y_test, noise = NoNoise(),
@@ -44,8 +45,10 @@ mse_against_training_size(
     mean.(getproperty.(result_noise_free, :mse_diff)), mean.(getproperty.(result_noise_free, :weight_diff)), S, identity)
 
 ## Noisy, logscale, vary training size
-nbr_train_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 100)]))
-noise = NaiveNoise(1e-2)
+nbr_train_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 50)]))
+# noise = NaiveNoise(1e-2)
+# noise = IsotropicNoise(1e-2, measurementset)
+noise = ShotNoise(1e-2, measurementset)
 
 result_noisy_train = tmap(
     nbr_train_states -> fit_and_compare(;
@@ -56,11 +59,11 @@ result_noisy_train = tmap(
 
 fig_noisy_train = mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noisy_train, :mse)),
-    mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), S, log10)
+    mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), S; xscale = log10, title = string(typeof(noise)), legend = false)
 
 #save("Figures/vary_training_size_noisy.png", fig_noisy_train)
 ## Noisy, logscale, vary test size
-nbr_test_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 100)]))
+nbr_test_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 50)]))
                                     
 result_noisy_test = tmap(
     nbr_test_states -> fit_and_compare(;

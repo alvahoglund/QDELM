@@ -79,3 +79,26 @@ end
     b, σ = 0.02, 0.05
     @test mse_theory(S, B, Σ, b, IsotropicNoise(σ, ms)) ≈ mse_theory(S, B, Σ, b, NaiveNoise(σ))
 end
+
+@testitem "Measurement set layout matches scrambling_map" begin
+    sys = tight_binding_system(2, 2, 1)
+    pf = QDELM.random_param_functions(; u_intra = 1.0, t = 1.0, t_so = 1.0, u_inter = 1.0)
+    hams = QDELM.matrix_representation_hams(hamiltonians(sys.grids, pf), sys)
+    ψ_res = QDELM.eig_state(hams.res, 2)
+    ts = [5.0, 10.0]
+    alg = QDELM.DiagonalizationPropagatorAlg()
+
+    ms = ChargeMeasurements012(sys, ts)
+    @test ms.M == length(sys.grids.total) && ms.n_times == 2
+    S = scrambling_map(sys, ms, ψ_res, hams.total, ts, alg)
+    @test size(S, 1) == QDELM.nrows(ms)
+    @test S ≈ scrambling_map(sys, QDELM.charge_probabilities(sys), ψ_res, hams.total, ts, alg)
+
+    @test_throws ArgumentError scrambling_map(sys, ChargeMeasurements012(sys, [5.0]), ψ_res, hams.total, ts, alg)
+    @test_throws ArgumentError QDELM.validate_layout(ChargeMeasurements012(ms.M, 1), S[1:(3 * ms.M), :] .* 2)
+
+    ms01 = ChargeMeasurements01(sys, ts)
+    S01 = scrambling_map(sys, ms01, ψ_res, hams.total, ts, alg)
+    @test size(S01, 1) == QDELM.nrows(ms01)
+    @test_throws DimensionMismatch QDELM.validate_layout(ms, S01)
+end

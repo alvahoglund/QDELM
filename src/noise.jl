@@ -3,39 +3,6 @@
 # Theory follows noise-covariance.md. Requires `using Distributions: Normal, MvNormal`.
 # =============================================================================
 
-## ================= Measurement layout =====================
-"""
-Row layout of S: index = (t-1)*n_outcomes*M + n*M + j with outcome n = 0:n_outcomes-1,
-dot j = 1:M and time t = 1:n_times. Rows (t, ·, j) form one POVM ("group").
-"""
-abstract type MeasurementSet end
-
-"Complete charge measurement (0, 1, 2 electrons): the three rows of a group sum to the identity."
-struct ChargeMeasurements012 <: MeasurementSet
-    M::Int
-    n_times::Int
-end
-
-"Charge measurement with outcomes 0, 1 only: not a complete POVM, no sum-zero constraint."
-struct ChargeMeasurements01 <: MeasurementSet
-    M::Int
-    n_times::Int
-end
-
-n_outcomes(::ChargeMeasurements012) = 3
-n_outcomes(::ChargeMeasurements01) = 2
-nrows(ms::MeasurementSet) = n_outcomes(ms) * ms.M * ms.n_times
-
-function groups(ms::MeasurementSet)
-    no = n_outcomes(ms)
-    return [[(t - 1) * no * ms.M + n * ms.M + j for n in 0:(no - 1)]
-            for t in 1:(ms.n_times) for j in 1:(ms.M)]
-end
-
-"Orthonormal basis (columns) of the space a group's noise lives in."
-group_basis(::ChargeMeasurements012) = [1/√2 1/√6; -1/√2 1/√6; 0.0 -2/√6]
-group_basis(::ChargeMeasurements01) = Matrix(1.0I, 2, 2)
-
 ## ================= Noise models =====================
 abstract type NoiseModel end
 
@@ -88,7 +55,7 @@ function noise_sample(n::IsotropicNoise, X)
     size(X, 1) == nrows(n.ms) || throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
     R = group_basis(n.ms)
     r = size(R, 2)
-    dist = MvNormal(zeros(r), fill(float(n.σ), r))
+    dist = MvNormal(zeros(r), Diagonal(fill(float(n.σ^2), r)))
     E = zeros(float(real(eltype(X))), size(X))
     for g in groups(n.ms)
         E[g, :] = R * rand(dist, size(X, 2))
@@ -129,6 +96,7 @@ noise_covariance(n::NaiveNoise, S, B, b) = n.σ^2 * I(size(S, 1))
 noise_covariance(n::CovariantNoise, S, B, b) = n.Σ
 
 function noise_covariance(n::IsotropicNoise, S, B, b)
+    size(S, 1) == nrows(n.ms) || throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
     R = group_basis(n.ms)
     Σ = zeros(size(S, 1), size(S, 1))
     for g in groups(n.ms)
@@ -138,9 +106,10 @@ function noise_covariance(n::IsotropicNoise, S, B, b)
 end
 
 function noise_covariance(n::ShotNoise, S, B, b)
+    size(S, 1) == nrows(n.ms) || throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
     SB = to_real.(S * B)
     d = isqrt(size(S, 2))
-    p̄ = to_real.(S * vec(Matrix(I, d, d))) ./ d
+    p̄ = to_real.(S * vec(I(d))) ./ d
     Σ = zeros(size(S, 1), size(S, 1))
     for (gi, g) in enumerate(groups(n.ms))
         p = p̄[g]
@@ -169,8 +138,19 @@ function W̃X_theory(S, B, Σ, b, noise::NoiseModel)
     Γ = b * SB * SB' + noise_covariance(noise, S, B, b)
     return b * (Σ' * B) * SB' * pinv(Hermitian(Γ))
 end
+function mse_theory(S, B, Σ, b, noise::CovariantNoise)
+    SB = S * B; T = Σ' * B
+    Γ = Hermitian(b * SB * SB' + noise.Σ)
+    return to_real.(diag(b * T * T' - b^2 * T * (SB' * pinv(Γ) * SB) * T'))
+end
 
-mse_theory(S, B, Σ, b, ::NoNoise) = zeros(size(Σ, 2))
+
+# mse_theory(S, B, Σ, b, ::NoNoise) = zeros(size(Σ, 2))
+function mse_theory(S, B, Σ, b, ::NoNoise)
+    SB = S * B; T = Σ' * B
+    return to_real.(diag(b * T * (I - pinv(SB) * SB) * T'))
+end
+
 W̃X_theory(S, B, Σ, b, ::NoNoise) = (Σ' * B) * pinv(S * B)
 
 "Whitened singular values sqrt(λ_p) of F and overlaps of the targets with its eigenvectors. For NaiveNoise(σ) these are σ_p/σ."

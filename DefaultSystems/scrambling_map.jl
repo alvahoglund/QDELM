@@ -8,7 +8,7 @@ seed = 1323
 hams = QDELM.matrix_representation_hams(QDELM.hamiltonians(sys.grids, seed), sys)
 ρ_res = ground_state(hams.res)
 t_list = [100, 200]
-measurements = QDELM.charge_probabilities(sys)
+measurements = ChargeMeasurements012(sys, t_list)
 S = scrambling_map(sys, measurements, ρ_res, hams.total, t_list)
 
 save("DefaultSystems/scrambling_map_A.jld2", "S", S, "t_list", t_list,
@@ -22,7 +22,7 @@ seed = 39212
 hams = QDELM.matrix_representation_hams(QDELM.hamiltonians(sys.grids, seed), sys)
 ρ_res = ground_state(hams.res)
 t_list = [100, 200, 300]
-measurements = QDELM.charge_probabilities(sys)
+measurements = ChargeMeasurements012(sys, t_list)
 S = scrambling_map(sys, measurements, ρ_res, hams.total, t_list)
 save("DefaultSystems/scrambling_map_B.jld2", "S", S, "t_list", t_list,
     "hams", hams, "measurements", measurements, "sys", sys)
@@ -35,7 +35,7 @@ seed = 39212
 hams = QDELM.matrix_representation_hams(QDELM.hamiltonians(sys.grids, seed), sys)
 ρ_res = ground_state(hams.res)
 t_list = [100, 200, 300]
-measurements = QDELM.charge_probabilities_01(sys)
+measurements = ChargeMeasurements01(sys, t_list)
 S = scrambling_map(sys, measurements, ρ_res, hams.total, t_list)
 save("DefaultSystems/scrambling_map_C.jld2", "S", S, "t_list", t_list,
     "hams", hams, "measurements", measurements, "sys", sys)
@@ -48,7 +48,7 @@ seed = 1323
 hams = QDELM.matrix_representation_hams(QDELM.hamiltonians(sys.grids, seed), sys)
 ρ_res = ground_state(hams.res)
 t_list = [100, 200]
-measurements = QDELM.charge_probabilities_01(sys)
+measurements = ChargeMeasurements01(sys, t_list)
 S = scrambling_map(sys, measurements, ρ_res, hams.total, t_list)
 
 save("DefaultSystems/scrambling_map_D.jld2", "S", S, "t_list", t_list,
