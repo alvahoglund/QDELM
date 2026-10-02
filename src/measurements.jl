@@ -143,9 +143,3 @@ end
 
 #S^2 = S(S+1) if the state is an eigenstate of S^2
 s_from_s2(s2_val) = -1 / 2 + √(s2_val + 1 / 4)
-
-## ================= Add noise to measurements =====================
-function add_noise(X, σE)
-    E = rand(Normal(0, σE), size(X))
-    return X + E
-end

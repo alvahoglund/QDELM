@@ -7,18 +7,29 @@ function randomize_hs_states(sys, nbr_states)
 end
 
 ## ================= Model fitting and evaluation ======================
-get_mse(Y_test, Y_pred) = to_real.(vec(mean((Y_test - Y_pred) .^ 2, dims = 2)))
-
-function fit_and_evaluate_from_states(; Ω_train, Ω_test, S, Σ, σE)
+# get_mse(Y_test, Y_pred) = to_real.(vec(mean((Y_test .- Y_pred) .^ 2, dims = 2)))
+function get_mse(Y_test::AbstractMatrix{T1}, Y_pred::AbstractMatrix{T2}) where {T1, T2}
+    nrows, ncols = size(Y_test)
+    T = promote_type(T1, T2)
+    out = Vector{real(T)}(undef, nrows)
+    for i in 1:nrows
+        s = zero(T)
+        for j in 1:ncols
+            diff = Y_test[i, j] - Y_pred[i, j]
+            s += abs2(diff)
+        end
+        out[i] = s / ncols
+    end
+    return out
+end
+function fit_and_evaluate_from_states(; Ω_train, Ω_test, S, Σ, noise)
     fit_and_evaluate(
         X_train = get_X(S, Ω_train), X_test = get_X(S, Ω_test), Y_train = get_Y(Σ, Ω_train),
-        Y_test = get_Y(Σ, Ω_test), σE = σE)
+        Y_test = get_Y(Σ, Ω_test), noise = noise)
 end
 
-function fit_and_evaluate(; X_train, X_test, Y_train, Y_test, σE)
-    X̃_train = get_X_noisy(X_train, σE)
-    X̃_test = get_X_noisy(X_test, σE)
-    Z_train, Z_test = preprocess_X(X_train = X̃_train, X_test = X̃_test)
+function fit_and_evaluate(; X_train, X_test, Y_train, Y_test, noise)
+    (; Z_train, Z_test) = QDELM.add_noise_center_bias(X_train = X_train, X_test = X_test, noise = noise)
     W = QDELM.regression(Z_train, Y_train)
     Y_pred = W * Z_test
     Y_pred_train = W * Z_train
@@ -27,11 +38,11 @@ function fit_and_evaluate(; X_train, X_test, Y_train, Y_test, σE)
     return (; mse, mse_train, W)
 end
 
-function fit_and_compare(; X_train, X_test, Y_train, Y_test, σE, Σ, S, B, b)
+function fit_and_compare(; X_train, X_test, Y_train, Y_test, noise, Σ, S, B, b)
     result = fit_and_evaluate(X_train = X_train, X_test = X_test, Y_train = Y_train,
-        Y_test = Y_test, σE = σE)
-    mse_theory_val = mse_theory(S, B, Σ, σE, b)
-    W_theory = W̃X_theory(S, B, Σ, σE, b)
+        Y_test = Y_test, noise = noise)
+    mse_theory_val = mse_theory(S, B, Σ, b, noise)
+    W_theory = W̃X_theory(S, B, Σ, b, noise)
     weight_diff = norm(result.W[:, 1:(end - 1)] - W_theory) / norm(W_theory)
     mse_diff = norm(result.mse - mse_theory_val) / norm(mse_theory_val)
     mse_diff_train = norm(result.mse_train - mse_theory_val) / norm(mse_theory_val)
@@ -39,15 +50,4 @@ function fit_and_compare(; X_train, X_test, Y_train, Y_test, σE, Σ, S, B, b)
 end
 
 ## ================= Theoretical weights ======================
-A(U, D, b, σE) = U * diagm((b * D .^ 2) ./ (b .* D .^ 2 .+ σE^2)) * U'
-WX_theory(S, B, Σ) = Σ' * B * pinv(S*B)
-W̃X_theory(S, B, Σ, σE, b) = WX_theory(S, B, Σ) * A(svd(S*B).U, svd(S*B).S, b, σE)
-
-function mse_theory(S, B, Σ, σE, b)
-    U, D, V = svd(S*B)
-    return to_real.(diag(Σ' * B * V * diagm((b * σE^2) ./ (b .* D .^ 2 .+ σE^2)) *
-                         V' * B' *
-                         Σ))
-end
-
-sv_overlap(S, B, Σ) = (vals = svd(S*B).S, overlaps = Σ' * B * svd(S*B).V)
+# mse_theory, W̃X_theory and sv_overlap(S, B, Σ, b, noise) live in QDELM (src/noise.jl)

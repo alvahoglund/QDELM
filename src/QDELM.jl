@@ -6,7 +6,7 @@ using Reexport
 @reexport using FermionicHilbertSpaces: indices, sector, AbstractHilbertSpace,
     NonCommutativeProducts
 
-using Distributions: Normal
+using Distributions: Normal, MvNormal
 using ArnoldiMethod
 using TestItems, Test
 
@@ -15,10 +15,13 @@ export random_separable_state, random_product_state, triplet_plus, singlet, grou
     def_state, density_matrix, matrix_representation_hams
 export charge_measurements, effective_measurement, scrambling_map, expectation_value,
     charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix,
-    add_noise, to_real
+    add_noise, add_noise!, to_real
+export MeasurementSet, ChargeMeasurements012, ChargeMeasurements01, NoiseModel, NoNoise,
+    NaiveNoise, IsotropicNoise, CovariantNoise, ShotNoise, noise_sample, noise_covariance,
+    information_matrix, mse_theory, W̃X_theory, sv_overlap
 export state_time_evolution, operator_time_evolution
 export set_dot_params, set_interaction_params
-export regression, get_X, get_Y, get_X_noisy, center_X, add_bias, preprocess_X,
+export regression, get_X, get_Y, center_X, add_bias, preprocess_X,
     feature_transformation
 
 to_dense(s::AbstractSparseArray) = Array(s)
@@ -33,6 +36,7 @@ include("effective_measurements.jl")
 include("scrambling_map.jl")
 include("scrambling_map_legacy.jl")
 include("scrambling_map_qp.jl")
+include("noise.jl")
 include("regression.jl")
 
 end

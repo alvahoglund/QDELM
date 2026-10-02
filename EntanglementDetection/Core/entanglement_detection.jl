@@ -49,10 +49,10 @@ function get_accuracy_classes(Y_true, Y_pred)
     )
 end
 
-function contruct_EW(; X_train, Y_train, X_test, Y_test, σE::Number,
+function contruct_EW(; X_train, Y_train, X_test, Y_test, noise::NoiseModel,
         feature_transformation_alg = QDELM.IdentityFeatureTransformation())
-    X̃_train = add_noise(X_train, σE)
-    X̃_test = add_noise(X_test, σE)
+    X̃_train = add_noise(X_train, noise)
+    X̃_test = add_noise(X_test, noise)
     Z_train, Z_test = preprocess_X(X_train = X̃_train, X_test = X̃_test)
     Z_train_poly = feature_transformation(Z_train, feature_transformation_alg)
     Z_test_poly = feature_transformation(Z_test, feature_transformation_alg)
@@ -62,11 +62,11 @@ function contruct_EW(; X_train, Y_train, X_test, Y_test, σE::Number,
         Z_train_poly = Z_train_poly, Z_test_poly = Z_test_poly)
 end
 
-function test_EW(; X_train, Y_train, X_test, Y_test, σE::Number,
+function test_EW(; X_train, Y_train, X_test, Y_test, noise::NoiseModel,
         feature_transformation_alg = QDELM.IdentityFeatureTransformation())
     W, Y_pred,
     Y_test = contruct_EW(X_train = X_train, Y_train = Y_train,
-        X_test = X_test, Y_test = Y_test, σE = σE,
+        X_test = X_test, Y_test = Y_test, noise = noise,
         feature_transformation_alg = feature_transformation_alg)
     return get_accuracy(Y_test, Y_pred)
 end

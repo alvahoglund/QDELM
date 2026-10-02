@@ -29,9 +29,9 @@ state_names = [QDELM.singlet, QDELM.triplet_0, QDELM.triplet_plus, QDELM.triplet
 X_train = get_X(S, Ω_train)
 X_test = get_X(S, Ω_test)
 
-σE = 0
+noise = NoNoise()
 new = contruct_EW(
-    X_train = X_train, Y_train = Y_train, X_test = X_test, Y_test = Y_test, σE = σE,
+    X_train = X_train, Y_train = Y_train, X_test = X_test, Y_test = Y_test, noise = noise,
     feature_transformation_alg = QDELM.Polynomial2FeatureTransformation())
 
 ##

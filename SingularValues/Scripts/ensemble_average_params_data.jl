@@ -2,7 +2,7 @@ includet("..\\Core\\singular_values_multiplexing.jl")
 using CairoMakie, Statistics, JLD2
 
 nbr_samples = 100
-#parameter_range = exp10.(range(log10(0.001), log10(20), length = 50))
+#parameter_range = logrange(0.001, 20, length = 50))
 parameter_range = range(0, 15, length = 50)
 t_func = () -> 100
 settings = [(3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (3, 5), (3, 6)]

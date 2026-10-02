@@ -1,7 +1,6 @@
 ## Datasets
 
 get_X(S, Ω) = to_real.(S * Ω)
-get_X_noisy(X, σE) = X + rand(Normal(0, σE), size(X))
 get_Y(Σ, Ω) = Σ' * Ω
 
 function center_X(; X_train, X_test)
@@ -11,8 +10,35 @@ function center_X(; X_train, X_test)
 end
 add_bias(XC) = vcat(XC, ones(1, size(XC, 2)))
 function preprocess_X(; X_train, X_test)
-    return (Z_train = add_bias(center_X(X_train = X_train, X_test = X_test).XC_train),
-        Z_test = add_bias(center_X(X_train = X_train, X_test = X_test).XC_test))
+    cX = center_X(X_train = X_train, X_test = X_test)
+    return (Z_train = add_bias(cX.XC_train), Z_test = add_bias(cX.XC_test))
+end
+
+"""
+    add_noise_center_bias(; X_train, X_test, noise)
+
+Performs the equivalent of:
+    X_train_noisy = add_noise(X_train, noise)
+    X_test_noisy  = add_noise(X_test, noise)
+    preprocess_X(X_train = X_train_noisy, X_test = X_test_noisy)
+"""
+function add_noise_center_bias(; X_train, X_test, noise::NoiseModel)
+    d, n_train, n_test = size(X_train, 1), size(X_train, 2), size(X_test, 2)
+    
+    # 1. Allocate final matrices and fill with (X + noise) + bias row
+    Z_train = Matrix{eltype(X_train)}(undef, d + 1, n_train)
+    Z_test  = Matrix{eltype(X_test)}(undef, d + 1, n_test)
+    @views Z_train[1:d, :] .= noise isa NoNoise ? X_train : add_noise(X_train, noise)
+    @views Z_test[1:d, :]  .= noise isa NoNoise ? X_test : add_noise(X_test, noise)
+    fill!(@view(Z_train[d + 1, :]), 1)
+    fill!(@view(Z_test[d + 1, :]), 1)
+
+    # 2. Mean of noisy training rows, then center both in-place via views
+    μ = mean(@view(Z_train[1:d, :]), dims = 2)
+    @views Z_train[1:d, :] .-= μ
+    @views Z_test[1:d, :]  .-= μ
+
+    return (; Z_train, Z_test)
 end
 
 function split_train_test(X, Y, train_fraction = 0.5)
@@ -27,7 +53,12 @@ function regression(X_train, Y_train)
     return Y_train * pinv(X_train)
 end
 
-mse(Y_true, Y_pred) = mean((Y_true - Y_pred) .^ 2)
+# mse(Y_true, Y_pred) = mean((Y_true - Y_pred) .^ 2)
+function mse(Y_true::AbstractArray, Y_pred::AbstractArray)
+    @assert size(Y_true) == size(Y_pred)
+    s = mapreduce((yt, yp) -> abs2(yt - yp), +, Y_true, Y_pred)
+    return s / length(Y_true)
+end
 
 ## Feature transformation for nonlinear regression
 abstract type FeatureTransformation end

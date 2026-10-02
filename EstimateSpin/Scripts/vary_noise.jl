@@ -26,9 +26,10 @@ datasets = (X_train = get_X(S, Ω_train),
 ## 
 σE_list = 10 .^ range(-7, 0, length = 30)
 
-results = map(σE -> fit_and_evaluate(; datasets..., σE = σE), σE_list)
+results = map(σE -> fit_and_evaluate(; datasets..., noise = NaiveNoise(σE)), σE_list)
 mse_list = map(r -> r.mse, results)
-mse_theory_list = map(σE -> mse_theory(S, B, Σ, σE, b), σE_list)
-sv_overlaps = sv_overlap(S, B, Σ)
+mse_theory_list = map(σE -> mse_theory(S, B, Σ, b, NaiveNoise(σE)), σE_list)
+# σ = 1 gives the plain singular values of S*B, so the plot's √b·σ_p lines are in σE units
+sv_overlaps = sv_overlap(S, B, Σ, b, NaiveNoise(1.0))
 
 mse_against_noise(mse_list, mse_theory_list, targets, sv_overlaps, b)

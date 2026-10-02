@@ -1,6 +1,9 @@
 using JLD2, CairoMakie
 includet("..\\Core\\estimate_spin.jl")
 includet("..\\Plots\\vary_data_size.jl")
+
+using OhMyThreads
+scheduler = DynamicScheduler()
 ## Load system
 S = load("DefaultSystems/scrambling_map_D.jld2", "S")
 sys = load("DefaultSystems/scrambling_map_D.jld2", "sys")
@@ -29,28 +32,27 @@ datasets = (X_train = get_X(S, Ω_train),
 ## Noise free, linear scale, vary training size
 nbr_train_states_list = [i for i in range(1, 100)]
 
-result_noise_free = map(
+@profview @time result_noise_free = tmap(
     nbr_train_states -> fit_and_compare(;
         X_train = datasets.X_train[:, 1:nbr_train_states], X_test = datasets.X_test,
-        Y_train = datasets.Y_train[:, 1:nbr_train_states], Y_test = datasets.Y_test, σE = 0,
+        Y_train = datasets.Y_train[:, 1:nbr_train_states], Y_test = datasets.Y_test, noise = NoNoise(),
         Σ = Σ, S = S, B = B, b = b),
-    nbr_train_states_list)
+    nbr_train_states_list; scheduler);
 
 mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noise_free, :mse)),
     mean.(getproperty.(result_noise_free, :mse_diff)), mean.(getproperty.(result_noise_free, :weight_diff)), S, identity)
 
 ## Noisy, logscale, vary training size
-nbr_train_states_list = floor.(Int, [i
-                                     for i in exp10.(range(log10(1), log10(10^4), length = 100))])
-σE = 1e-2
+nbr_train_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 100)]))
+noise = NaiveNoise(1e-2)
 
-result_noisy_train = map(
+result_noisy_train = tmap(
     nbr_train_states -> fit_and_compare(;
         X_train = datasets.X_train[:, 1:nbr_train_states], X_test = datasets.X_test,
         Y_train = datasets.Y_train[:, 1:nbr_train_states], Y_test = datasets.Y_test,
-        σE = σE, Σ = Σ, S = S, B = B, b = b),
-    nbr_train_states_list)
+        noise = noise, Σ = Σ, S = S, B = B, b = b),
+    nbr_train_states_list; scheduler)
 
 fig_noisy_train = mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noisy_train, :mse)),
@@ -58,14 +60,14 @@ fig_noisy_train = mse_against_training_size(
 
 #save("Figures/vary_training_size_noisy.png", fig_noisy_train)
 ## Noisy, logscale, vary test size
-nbr_test_states_list = floor.(Int, [i
-                                    for i in exp10.(range(log10(1), log10(10^4), length = 100))])
-result_noisy_test = map(
+nbr_test_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 100)]))
+                                    
+result_noisy_test = tmap(
     nbr_test_states -> fit_and_compare(;
         X_train = datasets.X_train, X_test = datasets.X_test[:, 1:nbr_test_states],
         Y_train = datasets.Y_train, Y_test = datasets.Y_test[:, 1:nbr_test_states],
-        σE = σE, Σ = Σ, S = S, B = B, b = b),
-    nbr_test_states_list)
+        noise = noise, Σ = Σ, S = S, B = B, b = b),
+    nbr_test_states_list; scheduler)
 
 fig_noisy_test = mse_against_test_size(
     nbr_test_states_list, mean.(getproperty.(result_noisy_test, :mse)),

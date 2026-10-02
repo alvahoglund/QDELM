@@ -1,5 +1,7 @@
 includet("..\\Core\\estimate_purity.jl")
 using JLD2
+using OhMyThreads
+scheduler = DynamicScheduler()
 ##
 S = load("DefaultSystems/scrambling_map_A.jld2", "S")
 sys = load("DefaultSystems/scrambling_map_A.jld2", "sys")
@@ -19,7 +21,7 @@ println("MSE: ", result.mse)
 
 ## Vary noise level
 σE_list = 10 .^ range(-6, stop = 0, length = 50)
-mse_list = [estimate_purity(X_train, Y_train, X_test, Y_test, σE).mse for σE in σE_list]
+mse_list = tmap(σE -> estimate_purity(X_train, Y_train, X_test, Y_test, NaiveNoise(σE)).mse, σE_list; scheduler)
 fig = Figure()
 ax = Axis(
     fig[1, 1], xlabel = "Noise level σE", ylabel = "MSE", xscale = log10, yscale = log10)

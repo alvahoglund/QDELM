@@ -27,9 +27,9 @@ state_names = [QDELM.singlet]
 X_train = get_X(S, Ω_train)
 X_test = get_X(S, Ω_test)
 
-σE = 0
+noise = NoNoise()
 lew = contruct_EW(
-    X_train = X_train, Y_train = Y_train, X_test = X_test, Y_test = Y_test, σE = σE)
+    X_train = X_train, Y_train = Y_train, X_test = X_test, Y_test = Y_test, noise = noise)
 
 ## ================ Plot db ======================
 (Ω_sub_ent,
@@ -52,12 +52,12 @@ fig
 ## =============== Plot heatmap with different noise levels ======================lew = contruct_EW(
 lew0 = contruct_EW(
     X_train = X_train, Y_train = Y_train, X_test = X_test,
-    Y_test = Y_test, σE = 0)
+    Y_test = Y_test, noise = NoNoise())
 Weff0 = effective_weight_matrix(
     lew0.W, sys.Hs_main, sys.H_main, S, Ω_train, sub_space = false)'
 lew2 = contruct_EW(
     X_train = X_train, Y_train = Y_train, X_test = X_test,
-    Y_test = Y_test, σE = 10^-2)
+    Y_test = Y_test, noise = NaiveNoise(10^-2))
 Weff2 = effective_weight_matrix(
     lew2.W, sys.Hs_main, sys.H_main, S, Ω_train, sub_space = false)'
 
