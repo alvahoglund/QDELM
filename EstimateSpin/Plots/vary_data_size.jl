@@ -1,5 +1,5 @@
 function mse_against_training_size(
-        nbr_train_states_list, mse, mse_diff, weight_diff, S; xscale = log10, title = nothing, legend = true)
+        nbr_train_states_list, mse, mse_diff, weight_diff, S; xscale = log10, title = "", legend = true)
     fig = Figure()
     ax = Axis(fig[1, 1]; xlabel = "Number of training states",
         ylabel = "MSE", yscale = log10, xscale = xscale, title)

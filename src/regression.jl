@@ -1,7 +1,7 @@
 ## Datasets
 
 get_X(S, Ω) = to_real.(S * Ω)
-get_Y(Σ, Ω) = Σ' * Ω
+get_Y(P, Ω) = P' * Ω
 
 function center_X(; X_train, X_test)
     XC_train = X_train .- mean(X_train, dims = 2)
@@ -24,19 +24,19 @@ Performs the equivalent of:
 """
 function add_noise_center_bias(; X_train, X_test, noise::NoiseModel)
     d, n_train, n_test = size(X_train, 1), size(X_train, 2), size(X_test, 2)
-    
+
     # 1. Allocate final matrices and fill with (X + noise) + bias row
     Z_train = Matrix{eltype(X_train)}(undef, d + 1, n_train)
-    Z_test  = Matrix{eltype(X_test)}(undef, d + 1, n_test)
+    Z_test = Matrix{eltype(X_test)}(undef, d + 1, n_test)
     @views Z_train[1:d, :] .= noise isa NoNoise ? X_train : add_noise(X_train, noise)
-    @views Z_test[1:d, :]  .= noise isa NoNoise ? X_test : add_noise(X_test, noise)
+    @views Z_test[1:d, :] .= noise isa NoNoise ? X_test : add_noise(X_test, noise)
     fill!(@view(Z_train[d + 1, :]), 1)
     fill!(@view(Z_test[d + 1, :]), 1)
 
     # 2. Mean of noisy training rows, then center both in-place via views
     μ = mean(@view(Z_train[1:d, :]), dims = 2)
     @views Z_train[1:d, :] .-= μ
-    @views Z_test[1:d, :]  .-= μ
+    @views Z_test[1:d, :] .-= μ
 
     return (; Z_train, Z_test)
 end

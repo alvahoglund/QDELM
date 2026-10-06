@@ -29,8 +29,8 @@ end
 
     Σ = zeros(K, K)
     A = randn(3, 3)
-    P = I - ones(3, 3) / 3
-    Σ[1:3, 1:3] = 1e-2 * P * (A * A') * P # rank-deficient PSD block
+    Q = I - ones(3, 3) / 3
+    Σ[1:3, 1:3] = 1e-2 * Q * (A * A') * Q # rank-deficient PSD block
     Σ[4:6, 4:6] = 1e-2 * Matrix(I, 3, 3)
     E = noise_sample(CovariantNoise(Σ), X)
     @test cov(E') ≈ Σ atol = 1e-3
@@ -53,15 +53,15 @@ end
     K, d2 = 40, 16
     S = randn(K, d2)
     B = Matrix(qr(randn(d2, d2 - 1)).Q)[:, 1:(d2 - 1)]
-    Σ = randn(d2, 3)
+    P = randn(d2, 3)
     b, σE = 0.02, 0.05
     U, D, V = svd(S * B)
-    old = diag(Σ' * B * V * diagm((b * σE^2) ./ (b .* D .^ 2 .+ σE^2)) * V' * B' * Σ)
-    @test mse_theory(S, B, Σ, b, NaiveNoise(σE)) ≈ old
+    old = diag(P' * B * V * diagm((b * σE^2) ./ (b .* D .^ 2 .+ σE^2)) * V' * B' * P)
+    @test mse_theory(S, B, P, b, NaiveNoise(σE)) ≈ old
     # Γ = b S_B S_B' + σE² I gives the same weights as the closed form
     A = U * diagm((b * D .^ 2) ./ (b .* D .^ 2 .+ σE^2)) * U'
-    W_old = Σ' * B * pinv(S * B) * A
-    @test W̃X_theory(S, B, Σ, b, NaiveNoise(σE)) ≈ W_old
+    W_old = P' * B * pinv(S * B) * A
+    @test W̃X_theory(S, B, P, b, NaiveNoise(σE)) ≈ W_old
 end
 
 @testitem "Isotropic noise on a complete POVM equals naive formula" begin
@@ -75,9 +75,10 @@ end
         S[g, :] .-= sum(S[g, :], dims = 1) / 3
     end
     B = Matrix(1.0I, 16, 15)
-    Σ = randn(16, 2)
+    P = randn(16, 2)
     b, σ = 0.02, 0.05
-    @test mse_theory(S, B, Σ, b, IsotropicNoise(σ, ms)) ≈ mse_theory(S, B, Σ, b, NaiveNoise(σ))
+    @test mse_theory(S, B, P, b, IsotropicNoise(σ, ms)) ≈
+          mse_theory(S, B, P, b, NaiveNoise(σ))
 end
 
 @testitem "Measurement set layout matches scrambling_map" begin
@@ -92,10 +93,13 @@ end
     @test ms.M == length(sys.grids.total) && ms.n_times == 2
     S = scrambling_map(sys, ms, ψ_res, hams.total, ts, alg)
     @test size(S, 1) == QDELM.nrows(ms)
-    @test S ≈ scrambling_map(sys, QDELM.charge_probabilities(sys), ψ_res, hams.total, ts, alg)
+    @test S ≈
+          scrambling_map(sys, QDELM.charge_probabilities(sys), ψ_res, hams.total, ts, alg)
 
-    @test_throws ArgumentError scrambling_map(sys, ChargeMeasurements012(sys, [5.0]), ψ_res, hams.total, ts, alg)
-    @test_throws ArgumentError QDELM.validate_layout(ChargeMeasurements012(ms.M, 1), S[1:(3 * ms.M), :] .* 2)
+    @test_throws ArgumentError scrambling_map(
+        sys, ChargeMeasurements012(sys, [5.0]), ψ_res, hams.total, ts, alg)
+    @test_throws ArgumentError QDELM.validate_layout(ChargeMeasurements012(ms.M, 1), S[1:(3 * ms.M), :] .*
+                                                                                     2)
 
     ms01 = ChargeMeasurements01(sys, ts)
     S01 = scrambling_map(sys, ms01, ψ_res, hams.total, ts, alg)

@@ -90,9 +90,9 @@ function effective_weight_matrix(W, Hs_main, H_main, S, Ω_train; sub_space = fa
     if sub_space
         Pm = get_sub_spin_basis(Hs_main, H_main)
     end
-    Σ00 = Pm[1:end, Pm_dict[(:σ0, :σ0)]]
+    P00 = Pm[1:end, Pm_dict[(:σ0, :σ0)]]
     WX = W[1:1, 1:(end - 1)]
-    1/4 * WX * S * (Pm - mean(Ω_train, dims = 2) * Σ00' * Pm)
+    1/4 * WX * S * (Pm - mean(Ω_train, dims = 2) * P00' * Pm)
 end
 
 function effective_weight_matrix_sub(W, Hs_main, H_main, S, Ω_train)

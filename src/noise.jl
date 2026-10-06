@@ -38,7 +38,8 @@ end
 Multinomial shot noise, Gaussian approximation: per group Cov(e | p) = (diag p - p p')/n_s.
 `n_s` is a number or a vector with one entry per group (see `groups`).
 """
-struct ShotNoise{S <: Union{Real, AbstractVector{<:Real}}, M <: MeasurementSet} <: NoiseModel
+struct ShotNoise{S <: Union{Real, AbstractVector{<:Real}}, M <: MeasurementSet} <:
+       NoiseModel
     n_s::S
     ms::M
 end
@@ -52,7 +53,8 @@ noise_sample(::NoNoise, X) = zeros(float(real(eltype(X))), size(X))
 noise_sample(n::NaiveNoise, X) = rand(Normal(0, n.σ), size(X))
 
 function noise_sample(n::IsotropicNoise, X)
-    size(X, 1) == nrows(n.ms) || throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
+    size(X, 1) == nrows(n.ms) ||
+        throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
     R = group_basis(n.ms)
     r = size(R, 2)
     dist = MvNormal(zeros(r), Diagonal(fill(float(n.σ^2), r)))
@@ -64,17 +66,20 @@ function noise_sample(n::IsotropicNoise, X)
 end
 
 function noise_sample(n::CovariantNoise, X)
-    size(X, 1) == size(n.Σ, 1) || throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(size(n.Σ, 1))"))
+    size(X, 1) == size(n.Σ, 1) ||
+        throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(size(n.Σ, 1))"))
     r = size(n.L, 2)
     return n.L * rand(MvNormal(zeros(r), ones(r)), size(X, 2))
 end
 
 function noise_sample(n::ShotNoise, X)
-    size(X, 1) == nrows(n.ms) || throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
+    size(X, 1) == nrows(n.ms) ||
+        throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
     R = group_basis(n.ms)
     E = zeros(float(real(eltype(X))), size(X))
     μ = zeros(size(R, 2))
     for (gi, g) in enumerate(groups(n.ms)), c in axes(X, 2)
+
         p = max.(real.(@view X[g, c]), 1e-12)   # floor keeps the covariance positive definite
         Σ = (Diagonal(p) - p * p') / shots(n, gi)
         E[g, c] = R * rand(MvNormal(μ, Symmetric(R' * Σ * R)))
@@ -96,7 +101,8 @@ noise_covariance(n::NaiveNoise, S, B, b) = n.σ^2 * I(size(S, 1))
 noise_covariance(n::CovariantNoise, S, B, b) = n.Σ
 
 function noise_covariance(n::IsotropicNoise, S, B, b)
-    size(S, 1) == nrows(n.ms) || throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
+    size(S, 1) == nrows(n.ms) ||
+        throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
     R = group_basis(n.ms)
     Σ = zeros(size(S, 1), size(S, 1))
     for g in groups(n.ms)
@@ -106,7 +112,8 @@ function noise_covariance(n::IsotropicNoise, S, B, b)
 end
 
 function noise_covariance(n::ShotNoise, S, B, b)
-    size(S, 1) == nrows(n.ms) || throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
+    size(S, 1) == nrows(n.ms) ||
+        throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
     SB = to_real.(S * B)
     d = isqrt(size(S, 2))
     p̄ = to_real.(S * vec(I(d))) ./ d
@@ -125,36 +132,37 @@ function information_matrix(n::NoiseModel, S, B, b)
     return SB' * pinv(Hermitian(noise_covariance(n, S, B, b))) * SB
 end
 
-"Per-target MSE of the optimal linear estimator, diag(Σ_B† (1/b + F)⁻¹ Σ_B)."
-function mse_theory(S, B, Σ, b, noise::NoiseModel)
+"Per-target MSE of the optimal linear estimator, diag(P_B† (1/b + F)⁻¹ P_B)."
+function mse_theory(S, B, P, b, noise::NoiseModel)
     F = information_matrix(noise, S, B, b)
-    T = Σ' * B
+    T = P' * B
     return to_real.(diag(T * inv(Hermitian(I / b + F)) * T'))
 end
 
-"Noisy weights W̃_X = b Σ_B† S_B† Γ⁺ with Γ = b S_B S_B† + Σ_E."
-function W̃X_theory(S, B, Σ, b, noise::NoiseModel)
+"Noisy weights W̃_X = b P_B† S_B† Γ⁺ with Γ = b S_B S_B† + Σ_E."
+function W̃X_theory(S, B, P, b, noise::NoiseModel)
     SB = S * B
     Γ = b * SB * SB' + noise_covariance(noise, S, B, b)
-    return b * (Σ' * B) * SB' * pinv(Hermitian(Γ))
+    return b * (P' * B) * SB' * pinv(Hermitian(Γ))
 end
-function mse_theory(S, B, Σ, b, noise::CovariantNoise)
-    SB = S * B; T = Σ' * B
+function mse_theory(S, B, P, b, noise::CovariantNoise)
+    SB = S * B
+    T = P' * B
     Γ = Hermitian(b * SB * SB' + noise.Σ)
     return to_real.(diag(b * T * T' - b^2 * T * (SB' * pinv(Γ) * SB) * T'))
 end
 
-
-# mse_theory(S, B, Σ, b, ::NoNoise) = zeros(size(Σ, 2))
-function mse_theory(S, B, Σ, b, ::NoNoise)
-    SB = S * B; T = Σ' * B
+# mse_theory(S, B, P, b, ::NoNoise) = zeros(size(P, 2))
+function mse_theory(S, B, P, b, ::NoNoise)
+    SB = S * B
+    T = P' * B
     return to_real.(diag(b * T * (I - pinv(SB) * SB) * T'))
 end
 
-W̃X_theory(S, B, Σ, b, ::NoNoise) = (Σ' * B) * pinv(S * B)
+W̃X_theory(S, B, P, b, ::NoNoise) = (P' * B) * pinv(S * B)
 
 "Whitened singular values sqrt(λ_p) of F and overlaps of the targets with its eigenvectors. For NaiveNoise(σ) these are σ_p/σ."
-function sv_overlap(S, B, Σ, b, noise::NoiseModel)
+function sv_overlap(S, B, P, b, noise::NoiseModel)
     F = eigen(Hermitian(information_matrix(noise, S, B, b)))
-    return (vals = sqrt.(max.(F.values, 0)), overlaps = Σ' * B * F.vectors)
+    return (vals = sqrt.(max.(F.values, 0)), overlaps = P' * B * F.vectors)
 end
