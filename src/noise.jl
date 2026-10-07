@@ -14,7 +14,7 @@ struct NaiveNoise{T <: Real} <: NoiseModel
     σ::T
 end
 
-"Isotropic noise inside each group's constraint plane: covariance σ² Q (Q projects onto the group basis)."
+"Correlated Gaussian noise (model A): per group covariance σ² R₃, R₃ = (3/2)(I - J/3), restricted to the kept outcomes."
 struct IsotropicNoise{T <: Real, M <: MeasurementSet} <: NoiseModel
     σ::T
     ms::M
@@ -25,13 +25,15 @@ struct CovariantNoise{T <: Real} <: NoiseModel
     Σ::Matrix{T}
     L::Matrix{T}   # Σ = L L'
 end
-function CovariantNoise(Σ::AbstractMatrix{<:Real})
+CovariantNoise(Σ::AbstractMatrix{<:Real}) = CovariantNoise(Matrix(Σ), psd_factor(Σ))
+
+"L with Σ = L L' for a positive semidefinite (possibly singular) Σ."
+function psd_factor(Σ)
     F = eigen(Symmetric(Matrix(Σ)))
-    keep = F.values .> sqrt(eps()) * max(maximum(F.values), eps())
-    all(F.values .> -sqrt(eps()) * max(maximum(F.values), eps())) ||
-        throw(ArgumentError("Σ must be positive semidefinite"))
-    L = F.vectors[:, keep] .* sqrt.(F.values[keep])'
-    return CovariantNoise(Matrix(Σ), L)
+    tol = sqrt(eps()) * max(maximum(F.values), eps())
+    all(F.values .> -tol) || throw(ArgumentError("Σ must be positive semidefinite"))
+    keep = F.values .> tol
+    return F.vectors[:, keep] .* sqrt.(F.values[keep])'
 end
 
 """
@@ -47,6 +49,16 @@ end
 shots(n::ShotNoise{<:Real}, ::Int) = n.n_s
 shots(n::ShotNoise{<:AbstractVector}, g::Int) = n.n_s[g]
 
+## ================= Covariance of one group =====================
+"Block σ² R₃ restricted to the kept outcomes (the first `n_outcomes`)."
+function group_covariance(n::IsotropicNoise)
+    k = 1:n_outcomes(n.ms)
+    return n.σ^2 * (1.5I - fill(0.5, 3, 3))[k, k]
+end
+
+" Cov(e | p) for the probabilities p of the kept outcomes of group `gi`."
+group_covariance(n::ShotNoise, p, gi) = (Diagonal(p) - p * p') / shots(n, gi)
+
 ## ================= Sampling =====================
 "Noise matrix E with the size of X, columns are independent draws."
 noise_sample(::NoNoise, X) = zeros(float(real(eltype(X))), size(X))
@@ -55,12 +67,10 @@ noise_sample(n::NaiveNoise, X) = rand(Normal(0, n.σ), size(X))
 function noise_sample(n::IsotropicNoise, X)
     size(X, 1) == nrows(n.ms) ||
         throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
-    R = group_basis(n.ms)
-    r = size(R, 2)
-    dist = MvNormal(zeros(r), Diagonal(fill(float(n.σ^2), r)))
+    L = psd_factor(group_covariance(n))
     E = zeros(float(real(eltype(X))), size(X))
     for g in groups(n.ms)
-        E[g, :] = R * rand(dist, size(X, 2))
+        E[g, :] = L * randn(size(L, 2), size(X, 2))
     end
     return E
 end
@@ -75,14 +85,11 @@ end
 function noise_sample(n::ShotNoise, X)
     size(X, 1) == nrows(n.ms) ||
         throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
-    R = group_basis(n.ms)
     E = zeros(float(real(eltype(X))), size(X))
-    μ = zeros(size(R, 2))
     for (gi, g) in enumerate(groups(n.ms)), c in axes(X, 2)
 
-        p = max.(real.(@view X[g, c]), 1e-12)   # floor keeps the covariance positive definite
-        Σ = (Diagonal(p) - p * p') / shots(n, gi)
-        E[g, c] = R * rand(MvNormal(μ, Symmetric(R' * Σ * R)))
+        L = psd_factor(group_covariance(n, max.(real.(X[g, c]), 0), gi))
+        E[g, c] = L * randn(size(L, 2))
     end
     return E
 end
@@ -103,10 +110,9 @@ noise_covariance(n::CovariantNoise, S, B, b) = n.Σ
 function noise_covariance(n::IsotropicNoise, S, B, b)
     size(S, 1) == nrows(n.ms) ||
         throw(DimensionMismatch("S has $(size(S, 1)) rows, expected $(nrows(n.ms))"))
-    R = group_basis(n.ms)
     Σ = zeros(size(S, 1), size(S, 1))
     for g in groups(n.ms)
-        Σ[g, g] = n.σ^2 * (R * R')
+        Σ[g, g] = group_covariance(n)
     end
     return Σ
 end
@@ -119,8 +125,7 @@ function noise_covariance(n::ShotNoise, S, B, b)
     p̄ = to_real.(S * vec(I(d))) ./ d
     Σ = zeros(size(S, 1), size(S, 1))
     for (gi, g) in enumerate(groups(n.ms))
-        p = p̄[g]
-        Σ[g, g] = (Diagonal(p) - p * p' - b * SB[g, :] * SB[g, :]') / shots(n, gi)
+        Σ[g, g] = group_covariance(n, p̄[g], gi) - b * SB[g, :] * SB[g, :]' / shots(n, gi)
     end
     return Σ
 end

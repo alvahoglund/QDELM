@@ -16,7 +16,8 @@ export random_separable_state, random_product_state, triplet_plus, singlet, grou
 export charge_measurements, effective_measurement, scrambling_map, expectation_value,
     charge_probabilities, matrix_representation_ops, pauli_strings, pauli_matrix,
     add_noise, add_noise!, to_real
-export MeasurementSet, ChargeMeasurements012, ChargeMeasurements01, operators, validate_layout,
+export MeasurementSet, ChargeMeasurements012, ChargeMeasurements01, ChargeMeasurements12,
+    operators, validate_layout,
     NoiseModel, NoNoise,
     NaiveNoise, IsotropicNoise, CovariantNoise, ShotNoise, noise_sample, noise_covariance,
     information_matrix, mse_theory, W̃X_theory, sv_overlap

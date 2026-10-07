@@ -21,28 +21,41 @@ struct ChargeMeasurements01 <: MeasurementSet
     n_times::Int
 end
 
+struct ChargeMeasurements12 <: MeasurementSet
+    M::Int
+    n_times::Int
+end
+
 _ntimes(::Number) = 1
 _ntimes(ts) = length(ts)
-ChargeMeasurements012(sys::QuantumDotSystem, ts) = ChargeMeasurements012(length(sys.grids.total), _ntimes(ts))
-ChargeMeasurements01(sys::QuantumDotSystem, ts) = ChargeMeasurements01(length(sys.grids.total), _ntimes(ts))
+function ChargeMeasurements012(sys::QuantumDotSystem, ts)
+    ChargeMeasurements012(length(sys.grids.total), _ntimes(ts))
+end
+function ChargeMeasurements01(sys::QuantumDotSystem, ts)
+    ChargeMeasurements01(length(sys.grids.total), _ntimes(ts))
+end
+function ChargeMeasurements12(sys::QuantumDotSystem, ts)
+    ChargeMeasurements12(length(sys.grids.total), _ntimes(ts))
+end
+ChargeMeasurements012(sys::QuantumDotSystem) = ChargeMeasurements012(sys, 1)
+ChargeMeasurements01(sys::QuantumDotSystem) = ChargeMeasurements01(sys, 1)
+ChargeMeasurements12(sys::QuantumDotSystem) = ChargeMeasurements12(sys, 1)
 
 n_outcomes(::ChargeMeasurements012) = 3
 n_outcomes(::ChargeMeasurements01) = 2
+n_outcomes(::ChargeMeasurements12) = 2
 nrows(ms::MeasurementSet) = n_outcomes(ms) * ms.M * ms.n_times
 
 "Operators handed to `scrambling_map`; their order defines the row layout above."
 operators(::ChargeMeasurements012, sys::QuantumDotSystem) = charge_probabilities(sys)
 operators(::ChargeMeasurements01, sys::QuantumDotSystem) = charge_probabilities_01(sys)
+operators(::ChargeMeasurements12, sys::QuantumDotSystem) = charge_probabilities_12(sys)
 
 function groups(ms::MeasurementSet)
     no = n_outcomes(ms)
     return [[(t - 1) * no * ms.M + n * ms.M + j for n in 0:(no - 1)]
             for t in 1:(ms.n_times) for j in 1:(ms.M)]
 end
-
-"Orthonormal basis (columns) of the space a group's noise lives in."
-group_basis(::ChargeMeasurements012) = [1/√2 1/√6; -1/√2 1/√6; 0.0 -2/√6]
-group_basis(::ChargeMeasurements01) = Matrix(1.0I, 2, 2)
 
 function check_compatible(ms::MeasurementSet, sys::QuantumDotSystem, ts)
     ms.M == length(sys.grids.total) ||
