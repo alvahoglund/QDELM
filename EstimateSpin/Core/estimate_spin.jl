@@ -46,5 +46,6 @@ function fit_and_compare(; X_train, X_test, Y_train, Y_test, noise, P, S, B, b)
     weight_diff = norm(result.W[:, 1:(end - 1)] - W_theory) / norm(W_theory)
     mse_diff = norm(result.mse - mse_theory_val) / norm(mse_theory_val)
     mse_diff_train = norm(result.mse_train - mse_theory_val) / norm(mse_theory_val)
-    return (; result.mse, result.W, weight_diff, mse_diff, result.mse_train, mse_diff_train)
+    return (; mse = result.mse, W = result.W, weight_diff, mse_diff,
+        mse_train = result.mse_train, mse_diff_train)
 end

@@ -13,7 +13,7 @@ b = 0.0147
 
 nbr_states_training = 10^4
 nbr_states_test = 10^4
-targets = [(:σ0, :σz), (:σx, :σz)]
+targets = [(:σ0, :σy), (:σy, :σy)]
 targets_idx = [Pm_dict[t] for t in targets]
 
 Ω_train = randomize_hs_states(sys, nbr_states_training)
@@ -25,15 +25,16 @@ datasets = (X_train = get_X(S, Ω_train),
     Y_train = get_Y(P, Ω_train),
     Y_test = get_Y(P, Ω_test))
 ## 
-σE_list = logrange(1e-7, 1, length = 30)
+σE_list = logrange(1e-6, 1, length = 30)
 # noises = [NaiveNoise(σE) for σE in σE_list]
-# noises = [IsotropicNoise(σE, measurementset) for σE in σE_list]
-# noises = [ShotNoise(1/σE, measurementset) for σE in σE_list]
+#noises = [IsotropicNoise(σE, measurementset) for σE in σE_list]
+noises = [ShotNoise(1/σE^2, measurementset) for σE in σE_list]
 results = map(noise -> fit_and_evaluate(; datasets..., noise), noises)
 mse_list = map(r -> r.mse, results)
 mse_theory_list = map(noise -> mse_theory(S, B, P, b, noise), noises)
 
-# σ = 1 gives the plain singular values of S*B, so the plot's √b·σ_p lines are in σE units
-sv_overlaps = sv_overlap(S, B, P, b, NaiveNoise(1.0))
+sv_overlaps = sv_overlap(S, B, P, b, ShotNoise(1.0, measurementset))
 
-mse_against_noise(mse_list, mse_theory_list, targets, sv_overlaps, b)
+fig = mse_against_noise(mse_list, mse_theory_list, targets, sv_overlaps, b)
+
+save("Figures\\mse_against_noise_res3_shot.png", fig)

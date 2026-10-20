@@ -46,9 +46,9 @@ mse_against_training_size(
 
 ## Noisy, logscale, vary training size
 nbr_train_states_list = unique!(floor.(Int, [i for i in logrange(1, 1e4, length = 50)]))
-# noise = NaiveNoise(1e-2)
-# noise = IsotropicNoise(1e-2, measurementset)
-noise = ShotNoise(1e-2, measurementset)
+#noise = NaiveNoise(1e-2)
+#noise = IsotropicNoise(1e-2, measurementset)
+noise = ShotNoise(1/(1e-2), measurementset) # n_s = 1/σ² shots
 
 result_noisy_train = tmap(
     nbr_train_states -> fit_and_compare(;
@@ -60,7 +60,7 @@ result_noisy_train = tmap(
 fig_noisy_train = mse_against_training_size(
     nbr_train_states_list, mean.(getproperty.(result_noisy_train, :mse)),
     mean.(getproperty.(result_noisy_train, :mse_diff)), mean.(getproperty.(result_noisy_train, :weight_diff)), S;
-    xscale = log10, title = string(typeof(noise)), legend = false)
+    xscale = log10, title = string(typeof(noise)), legend = true)
 
 #save("Figures/vary_training_size_noisy.png", fig_noisy_train)
 ## Noisy, logscale, vary test size
@@ -78,3 +78,20 @@ fig_noisy_test = mse_against_test_size(
     mean.(getproperty.(result_noisy_test, :mse_diff)), log10)
 
 #save("Figures/vary_test_size_noisy.png", fig_noisy_test)
+
+## Noisy, Weight convergence with train, MSE convergence with test
+# Fit log-log slopes over the asymptotic region N ≥ N_fit_min; 1/√N convergence gives slope -1/2
+N_fit_min = 100
+weight_diff_train = getproperty.(result_noisy_train, :weight_diff)
+mse_diff_test = getproperty.(result_noisy_test, :mse_diff)
+_, k_w = loglog_fit(nbr_train_states_list, weight_diff_train, N_fit_min)
+_, k_mse = loglog_fit(nbr_test_states_list, mse_diff_test, N_fit_min)
+println("Slope for N ≥ $N_fit_min: weights k = $(round(k_w, digits = 3)), ",
+    "MSE k = $(round(k_mse, digits = 3))")
+
+fig_convergence = mse_W_convergence(
+    nbr_train_states_list, nbr_test_states_list, weight_diff_train, mse_diff_test, S;
+    title = L"Convergence of $W_X$ and MSE", xscale = log10, N_fit_min)
+
+save("Figures/mse_W_convergence.png", fig_convergence)
+
