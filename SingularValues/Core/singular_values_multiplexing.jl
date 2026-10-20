@@ -29,6 +29,16 @@ function time_multiplexing(;
     return S_list
 end
 
+# Repeat the same m0 scrambling maps cyclically: S1, ..., Sm0, S1, ..., Sm0, ...
+function identical_multiplexing(;
+        sys, measurements, M_max, t_func = () -> rand(100:200),
+        seed = 7284, param_funcs = QDELM.random_param_functions(), m0 = 1)
+    Random.seed!(seed)
+    S_block = [rand_S(sys = sys, measurements = measurements, t_func = t_func,
+                   param_funcs = param_funcs) for _ in 1:m0]
+    return [S_block[mod1(M, m0)] for M in 1:M_max]
+end
+
 function get_svd_vals(S_list, B)
     svd_list = svdvals(vcat(S_list...)*B)
     if length(svd_list) < size(B, 2)
@@ -37,8 +47,18 @@ function get_svd_vals(S_list, B)
     return svd_list
 end
 
-function svd_lists_multiplexing(S_list, B)
-    [get_svd_vals(S_list[1:m], B) for m in 1:length(S_list)]
+function svd_multiplexing(
+        multiplexing_type, sys, measurements, B, b, noise;
+        param_funcs = QDELM.random_param_functions(), seed = 7284, kwargs...)
+    S_list = multiplexing_type(;
+        sys, measurements, M_max, seed,
+        param_funcs = param_funcs, kwargs...)
+    G_list = [information_matrix(noise, S, B, b) for S in S_list]
+    return svd_lists_multiplexing_fromG(G_list)
+end
+
+function svd_lists_multiplexing_fromG(G_list)
+    [singular_values_fromG(sum(G_list[1:m])) for m in 1:length(G_list)]
 end
 
 κ(σ_max, σ_min) = σ_min > 10^-10 ? σ_max / σ_min : NaN
@@ -57,7 +77,7 @@ function singular_values(G)
 end
 
 function singular_values_fromG(G)
-    λ = eigvals(G)
+    λ = eigvals(Hermitian(G))
     if length(λ) < size(G, 1)
         λ = vcat(λ, zeros(size(G, 1) - length(λ)))
     end
@@ -70,7 +90,7 @@ end
 # singular values reflect the noise shape only. NaiveNoise reproduces the unwhitened S_B' S_B.
 # `b` is only used by ShotNoise, and must then be a number.
 
-function set_noise(; ms::MeasurementSet, noise = QDELM.NaiveNoise, σ = 1)
+function set_noise(; ms::MeasurementSet, noise = QDELM.ShotNoise, σ = 1)
     if noise == QDELM.NaiveNoise
         return noise(σ)
     elseif noise == QDELM.IsotropicNoise
@@ -83,7 +103,7 @@ function set_noise(; ms::MeasurementSet, noise = QDELM.NaiveNoise, σ = 1)
 end
 ## ======================== Ensemble average with varying params=========================
 function get_ensemble_average(; nbr_dots_res, qn_res, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     grid = QDELM.generate_grid(2, nbr_dots_res)
     sys = tight_binding_system(grid, qn_res)
     B = QDELM.get_B(sys.Hs_main, sys.H_main)
@@ -116,7 +136,7 @@ end
 
 function get_ensemble_average_sv(;
         nbr_dots_res, qn_res, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     G_avg = get_ensemble_average(
         nbr_dots_res = nbr_dots_res, qn_res = qn_res,
         ham_param_funcs = ham_param_funcs, nbr_samples = nbr_samples,
@@ -126,7 +146,7 @@ end
 
 function get_ensemble_average_sv_params(;
         nbr_dots_res, qn_res, ham_param_func_list, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     map(
         ham_params -> get_ensemble_average_sv(;
             nbr_dots_res = nbr_dots_res, qn_res = qn_res,
@@ -137,7 +157,7 @@ end
 
 function get_ensemble_average_sv_params_settings(;
         settings, ham_param_func_list, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     sv_dict = Dict{Tuple{Int, Int}, Vector{Vector{Float64}}}()
 
     for setting in settings
@@ -153,7 +173,7 @@ end
 ## ======================== Ensemble average with varying qn =========================
 
 function get_ensemble_average_qn(; nbr_dots_res, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     ## Get ensamble average for varying qns. The same Hamiltonians are used for all qns
     grid = QDELM.generate_grid(2, nbr_dots_res)
     n_qn = 2 * nbr_dots_res + 1
@@ -193,7 +213,7 @@ end
 
 function get_ensemble_average_res_qn(;
         nbr_dots_res_list, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     # Construct a dictionary to hold the ensemble average for each nbr_dots_res
     ens_avg_dict = Dict{Int, Vector{Matrix{ComplexF64}}}()
     for nbr_dots_res in nbr_dots_res_list
@@ -206,7 +226,7 @@ function get_ensemble_average_res_qn(;
 end
 
 function get_ensemble_average_sv_qn(; nbr_dots_res, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     G_avg = get_ensemble_average_qn(
         nbr_dots_res = nbr_dots_res, ham_param_funcs = ham_param_funcs,
         nbr_samples = nbr_samples, t_func = t_func,
@@ -216,7 +236,7 @@ end
 
 function get_ensemble_average_sv_res_qn(;
         nbr_dots_res_list, ham_param_funcs, nbr_samples, t_func,
-        noise_model = QDELM.NaiveNoise, msf = QDELM.ChargeMeasurements012, b = nothing)
+        noise_model = QDELM.ShotNoise, msf = QDELM.ChargeMeasurements012, b = 0.0147)
     sv_dict = Dict{Int, Vector{Vector{Float64}}}()
     for nbr_dots_res in nbr_dots_res_list
         sv_dict[nbr_dots_res] = get_ensemble_average_sv_qn(
@@ -232,7 +252,7 @@ end
 "Singular values per noise model: noise_model => (nbr_dots_res => [sv for each qn])."
 function get_ensemble_average_sv_res_qn_noise(;
         noise_models, nbr_dots_res_list, ham_param_funcs, nbr_samples, t_func,
-        msf = QDELM.ChargeMeasurements012, b = nothing)
+        msf = QDELM.ChargeMeasurements012, b = 0.0147)
     return Dict(
         noise_model => get_ensemble_average_sv_res_qn(;
             nbr_dots_res_list, ham_param_funcs, nbr_samples, t_func,
