@@ -4,7 +4,7 @@ includet("..\\Plots\\entanglement_detection.jl")
 ## ================ System ======================
 S = load("DefaultSystems/scrambling_map_D.jld2", "S")
 sys = load("DefaultSystems/scrambling_map_D.jld2", "sys")
-
+measurementset = load("DefaultSystems/scrambling_map_D.jld2", "measurements")
 ## ================ Datasets ======================
 nbr_ent_states_train = 10^5
 nbr_ent_states_test = 10^5
@@ -49,15 +49,18 @@ fig = Figure()
 plot_heatmap_W_spin_basis!(fig[1, 1], W_eff)
 fig
 
-## =============== Plot heatmap with different noise levels ======================lew = contruct_EW(
+## =============== Plot heatmap with different noise levels ======================
 lew0 = contruct_EW(
     X_train = X_train, Y_train = Y_train, X_test = X_test,
     Y_test = Y_test, noise = NoNoise())
 Weff0 = effective_weight_matrix(
     lew0.W, sys.Hs_main, sys.H_main, S, Ω_train, sub_space = false)'
+
+σE = 10^-5
+noise = ShotNoise(1/(σE^2), measurementset)
 lew2 = contruct_EW(
     X_train = X_train, Y_train = Y_train, X_test = X_test,
-    Y_test = Y_test, noise = NaiveNoise(10^-2))
+    Y_test = Y_test, noise = noise)
 Weff2 = effective_weight_matrix(
     lew2.W, sys.Hs_main, sys.H_main, S, Ω_train, sub_space = false)'
 

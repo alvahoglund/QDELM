@@ -4,9 +4,9 @@ using OhMyThreads
 using CairoMakie
 scheduler = DynamicScheduler()
 ##
-S = load("DefaultSystems/scrambling_map_A.jld2", "S")
-sys = load("DefaultSystems/scrambling_map_A.jld2", "sys")
-measurementset = load("DefaultSystems/scrambling_map_A.jld2", "measurements")
+S = load("DefaultSystems/scrambling_map_C.jld2", "S")
+sys = load("DefaultSystems/scrambling_map_C.jld2", "sys")
+measurementset = load("DefaultSystems/scrambling_map_C.jld2", "measurements")
 ##
 nbr_states_train = 10^4
 nbr_states_test = 10^4
@@ -23,11 +23,12 @@ println("MSE: ", result.mse)
 
 ## Vary noise level
 σE_list = logrange(1e-6, 1, length = 20)
-noises = [NaiveNoise(σE) for σE in σE_list]
+#noises = [NaiveNoise(σE) for σE in σE_list]
 # noises = [IsotropicNoise(σE, measurementset) for σE in σE_list]
+noises = [ShotNoise(1/(σE^2), measurementset) for σE in σE_list]
 mse_list = tmap(noise -> estimate_purity(X_train, Y_train, X_test, Y_test, noise).mse, noises; scheduler)
 fig = Figure()
 ax = Axis(
-    fig[1, 1], xlabel = "Noise level σE", ylabel = "MSE", xscale = log10, yscale = log10)
-scatterlines!(ax, σE_list, mse_list, color = :blue)
+    fig[1, 1], xlabel = "Noise level σE", ylabel = "MSE", xscale = log10)
+scatterlines!(ax, σE_list, mse_list)
 fig
