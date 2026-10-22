@@ -123,3 +123,12 @@ function scrambling_map(sys::QuantumDotSystem, measurements, ψres,
     scrambling_map(sys.H_main, sys.H_res, sys.H_total, measurements, ψres,
         hamiltonian, t, alg)
 end
+
+"Same as above, with operators and row layout both taken from the measurement set `ms`."
+function scrambling_map(sys::QuantumDotSystem, ms::MeasurementSet, ψres,
+    hamiltonian, t, alg=AutoPropagatorAlg())
+    check_compatible(ms, sys, t)
+    S = scrambling_map(sys, operators(ms, sys), ψres, hamiltonian, t, alg)
+    validate_layout(ms, S)
+    return S
+end

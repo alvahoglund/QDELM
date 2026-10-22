@@ -15,7 +15,7 @@ measurements = matrix_representation_ops(charge_probabilities(sys.grids.total), 
 S = scrambling_map(sys, measurements, ψ_res, hams.total, t)
 
 pm, pm_dict = pauli_matrix(sys.Hs_main, sys.H_main)
-Σzz = pm[:, pm_dict[(:σz, :σz)]]
+Pzz = pm[:, pm_dict[(:σz, :σz)]]
 B = 1/2 * pm[:, 2:end]
 
 ## ================ Dataset generation ==========================
@@ -36,14 +36,14 @@ XC_test = X_test .- mean_vals
 Z_train = vcat(XC_train, ones(1, nbr_states_train))
 Z_test = vcat(XC_test, ones(1, nbr_states_test))
 
-Σzz = vec(ps[(:σz, :σz)])
-Y_train = Σzz' * Ω_train
-Y_test = Σzz' * Ω_test
+Pzz = vec(ps[(:σz, :σz)])
+Y_train = Pzz' * Ω_train
+Y_test = Pzz' * Ω_test
 
 ## ================= Training without noise and with centering ==========================
 W = Y_train * pinv(Z_train)
-WX_theory = Σzz' * B * pinv(S*B)
-XI_theory = Σzz' * mean(Ω_train, dims = 2)
+WX_theory = Pzz' * B * pinv(S*B)
+XI_theory = Pzz' * mean(Ω_train, dims = 2)
 W_theory = hcat(WX_theory, XI_theory)
 
 weight_diff = norm(W - W_theory) / norm(W_theory)
@@ -60,7 +60,7 @@ print("MSE (test): ", mse, "\n")
 ## ================= Training without noise and without centering ==========================
 
 W = Y_train * pinv(X_train)
-W_theory = Σzz' * pinv(S)
+W_theory = Pzz' * pinv(S)
 weight_diff_no_centering = norm(W - W_theory) / norm(W_theory)
 Y_train_pred = W * X_train
 Y_test_pred = W * X_test
@@ -94,9 +94,9 @@ W̃ = Y_train * pinv(Z̃_train)
 U, D, V = svd(S*B)
 
 A = U * diagm((b * D .^ 2) ./ (b .* D .^ 2 .+ σE^2)) * U'
-WX_theory = Σzz' * B * pinv(S*B)
+WX_theory = Pzz' * B * pinv(S*B)
 W̃X_theory = WX_theory * A
-W̃I_theory = Σzz' * mean(Ω_train, dims = 2)
+W̃I_theory = Pzz' * mean(Ω_train, dims = 2)
 W̃_theory = hcat(W̃X_theory, W̃I_theory)
 
 weight_diff_no_centering = norm(W̃ - W̃_theory) / norm(W̃_theory)
@@ -105,7 +105,7 @@ Y_test_pred = W̃ * Z̃_test
 Y_train_pred = W̃ * Z̃_train
 mse_train = mean((Y_train_pred .- Y_train) .^ 2)
 mse = mean((Y_test_pred .- Y_test) .^ 2)
-mse_pred = Σzz' * B * V * diagm((b * σE .^ 2) ./ (b .* D .^ 2 .+ σE^2)) * V' * B' * Σzz
+mse_pred = Pzz' * B * V * diagm((b * σE .^ 2) ./ (b .* D .^ 2 .+ σE^2)) * V' * B' * Pzz
 
 print("\nTraining with noise and with centering:\n")
 print("Weight difference: ", weight_diff_no_centering, "\n")

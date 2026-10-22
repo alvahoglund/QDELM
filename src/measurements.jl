@@ -93,6 +93,12 @@ function charge_probabilities_01(qd_system::QuantumDotSystem)
             single_charge_probabilities(qd_system.grids.total)),
         qd_system.H_total)
 end
+function charge_probabilities_12(qd_system::QuantumDotSystem)
+    matrix_representation_ops(
+        vcat(single_charge_probabilities(qd_system.grids.total),
+            double_charge_probabilities(qd_system.grids.total)),
+        qd_system.H_total)
+end
 
 function correlated_measurements(grid, qn_total)
     valid_combos = get_measurement_combinations(grid, qn_total)
@@ -143,9 +149,3 @@ end
 
 #S^2 = S(S+1) if the state is an eigenstate of S^2
 s_from_s2(s2_val) = -1 / 2 + √(s2_val + 1 / 4)
-
-## ================= Add noise to measurements =====================
-function add_noise(X, σE)
-    E = rand(Normal(0, σE), size(X))
-    return X + E
-end

@@ -11,16 +11,16 @@ function random_mixed_states(nbr_states, sys)
         hcat, 1:nbr_states)
 end
 
-function get_purity_mse(X, Y, σE)
-    W, Y_pred, Y_true = predict_purity(X, Y, σE)
+function get_purity_mse(X, Y, noise)
+    W, Y_pred, Y_true = predict_purity(X, Y, noise)
     return QDELM.mse(Y_true, Y_pred)
 end
 
 get_purity(Ω) = [real(dot(Ω[:, i], Ω[:, i])) for i in eachindex(Ω[1, :])]
 
-function estimate_purity(X_train, Y_train, X_test, Y_test, σE)
-    X̃_train = QDELM.add_noise(X_train, σE)
-    X̃_test = QDELM.add_noise(X_test, σE)
+function estimate_purity(X_train, Y_train, X_test, Y_test, noise::NoiseModel)
+    X̃_train = QDELM.add_noise(X_train, noise)
+    X̃_test = QDELM.add_noise(X_test, noise)
     Z_train, Z_test = preprocess_X(; X_train = X̃_train, X_test = X̃_test)
     Z_train_poly = QDELM.feature_transformation(Z_train, QDELM.Polynomial2FeatureTransformation())
     Z_test_poly = QDELM.feature_transformation(Z_test, QDELM.Polynomial2FeatureTransformation())
