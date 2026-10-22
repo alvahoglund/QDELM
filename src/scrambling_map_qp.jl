@@ -46,8 +46,16 @@ QPAlg(method=QP.Cheby; max_dt::Real=Inf, block::Bool=false, kwargs...) =
 _qp_name(m::Module) = Symbol(:qp_, nameof(m))
 _qp_name(m) = Symbol(:qp_, m)
 
-"QP spectral range with a local seeded RNG: deterministic, and leaves the global RNG untouched."
-_specrange(H; kwargs...) = QP.SpectralRange.specrange(H, :auto; rng=Random.Xoshiro(0x5eed), kwargs...)
+"""
+QP spectral range with a local seeded RNG: deterministic, and leaves the global RNG untouched.
+QP's `:arnoldi` estimate is a heuristic and can come out too narrow, which makes Chebychev
+diverge, so widen it by `margin` of its width.
+"""
+function _specrange(H; margin=0.05, kwargs...)
+    E_min, E_max = QP.SpectralRange.specrange(H, :auto; rng=Random.Xoshiro(0x5eed), kwargs...)
+    pad = margin * max(E_max - E_min, eps() * max(1.0, abs(E_max)))
+    return E_min - pad, E_max + pad
+end
 
 "Chebychev: estimate the spectral range once (not in every init_prop), unless given."
 function _init_prop_kwargs(H, alg::QPAlg)

@@ -27,7 +27,8 @@ abstract type AbstractPropagatorAlg end
 # -----------------------------------------------------------------------------
 struct BlockPropagatorAlg <: AbstractPropagatorAlg end
 
-function scrambling_map(H_main, H_res, H_total, measurements, ψres, hamiltonian, t::Number, ::BlockPropagatorAlg)
+function scrambling_map(H_main, H_res, H_total, measurements, ψres,
+        hamiltonian, t::Number, ::BlockPropagatorAlg)
     ρ_res = density_matrix(ψres)
     U = propagator(t, hamiltonian)
     measurements_t = map(Base.Fix1(operator_time_evolution, U), measurements)
@@ -37,9 +38,13 @@ function scrambling_map(H_main, H_res, H_total, measurements, ψres, hamiltonian
     return reduce(vcat, (vec(m)' for m in eff_measurements))
 end
 
-function scrambling_map(H_main, H_res, H_total, measurements, ψres, hamiltonian, ts::AbstractArray, alg::BlockPropagatorAlg)
-    mapreduce(t -> scrambling_map(H_main, H_res, H_total, measurements, ψres,
-        hamiltonian, t, alg), vcat, ts)
+function scrambling_map(H_main, H_res, H_total, measurements, ψres, hamiltonian,
+        ts::AbstractArray, alg::BlockPropagatorAlg)
+    mapreduce(
+        t -> scrambling_map(H_main, H_res, H_total, measurements, ψres,
+            hamiltonian, t, alg),
+        vcat,
+        ts)
 end
 
 # -----------------------------------------------------------------------------
@@ -50,11 +55,11 @@ abstract type AbstractStatePropagatorAlg <: AbstractPropagatorAlg end
 
 _tvec(t::Real) = [t]
 _tvec(ts) = collect(ts)
-_increments(ts::Vector{T}) where T = isempty(ts) ? T[] : [ts[1]; diff(ts)]
+_increments(ts::Vector{T}) where {T} = isempty(ts) ? T[] : [ts[1]; diff(ts)]
 
 _operator(H::SparseMatrixCSC) = H
 _operator(H::StridedMatrix{<:Complex}) = H
-_operator(H::StridedMatrix{R}) where R<:Real = Matrix{complex(R)}(H)   # keep BLAS on complex blocks
+_operator(H::StridedMatrix{R}) where {R <: Real} = Matrix{complex(R)}(H)   # keep BLAS on complex blocks
 _operator(H::AbstractMatrix) = sparse(H)
 _operator(H) = H
 
@@ -65,7 +70,7 @@ _nnz_per_row(H) = float(size(H, 2))
     initial_block(H_main, H_res, H_total, ψres) -> Ψ0 :: Matrix{ComplexF64} (N × N_main)
 Columns are e_j ⊗ ψres embedded in the total Hilbert space.
 """
-function initial_block(H_main, H_res, H_total, ψres::AbstractVector{T}) where T
+function initial_block(H_main, H_res, H_total, ψres::AbstractVector{T}) where {T}
     N_main = dim(H_main)
     e_j = zeros(T, N_main)
     stack(1:N_main) do n
@@ -78,17 +83,27 @@ end
 "Rows vec(U' D_k U)' for each (diagonal) measurement D_k — same convention as before."
 measurement_rows(U, measurements) = stack(op -> vec(U' * (Diagonal(op) * U)), measurements)'
 
+"Propagated blocks must stay isometric: U'U = I. Catches a diverged propagator."
+function check_isometry(U, t, tol = 1e-6)
+    defect = norm(U' * U - I)
+    defect ≤ tol ||
+        error("propagator not unitary at t = $t: ‖U†U - I‖ = $defect (propagation diverged)")
+    return U
+end
+
 function scrambling_map(H_main, H_res, H_total, measurements, ψres::AbstractVector,
-    hamiltonian, t::Number, alg::AbstractStatePropagatorAlg)
+        hamiltonian, t::Number, alg::AbstractStatePropagatorAlg)
     Ψ0 = initial_block(H_main, H_res, H_total, ψres)
     Us, _ = propagate_block(hamiltonian, Ψ0, _tvec(t), alg)
+    check_isometry(only(Us), t)
     return measurement_rows(only(Us), measurements)
 end
 
 function scrambling_map(H_main, H_res, H_total, measurements, ψres::AbstractVector,
-    hamiltonian, ts::AbstractVector{<:Real}, alg::AbstractStatePropagatorAlg)
+        hamiltonian, ts::AbstractVector{<:Real}, alg::AbstractStatePropagatorAlg)
     Ψ0 = initial_block(H_main, H_res, H_total, ψres)
     Us, _ = propagate_block(hamiltonian, Ψ0, ts, alg)
+    foreach(check_isometry, Us, ts)
     return reduce(vcat, [measurement_rows(U, measurements) for U in Us])
 end
 
@@ -112,21 +127,21 @@ function propagate_block(H, Ψ0, ts, ::DiagonalizationPropagatorAlg)
     end
     tmax = isempty(tsv) ? 0.0 : maximum(abs, tsv)
     err = eps() * size(H, 1) * maximum(abs, F.values) * max(1.0, tmax)   # heuristic
-    return Us, (; method=:diagonalization, err_est=err, nmatvec=0)
+    return Us, (; method = :diagonalization, err_est = err, nmatvec = 0)
 end
 
 # -----------------------------------------------------------------------------
 # System-level entry point (default is AutoPropagatorAlg)
 # -----------------------------------------------------------------------------
 function scrambling_map(sys::QuantumDotSystem, measurements, ψres,
-    hamiltonian, t, alg=AutoPropagatorAlg())
+        hamiltonian, t, alg = AutoPropagatorAlg())
     scrambling_map(sys.H_main, sys.H_res, sys.H_total, measurements, ψres,
         hamiltonian, t, alg)
 end
 
 "Same as above, with operators and row layout both taken from the measurement set `ms`."
 function scrambling_map(sys::QuantumDotSystem, ms::MeasurementSet, ψres,
-    hamiltonian, t, alg=AutoPropagatorAlg())
+        hamiltonian, t, alg = AutoPropagatorAlg())
     check_compatible(ms, sys, t)
     S = scrambling_map(sys, operators(ms, sys), ψres, hamiltonian, t, alg)
     validate_layout(ms, S)
