@@ -20,8 +20,7 @@ function triplet_minus()
 end
 
 function def_state(state_name, H)
-    vacuum = FermionicHilbertSpaces.SymbolicState(H, FockNumber(0))
-    state = state_name() * vacuum
+    state = state_name() * Ket("0", H)
     representation(state, H)
 end
 

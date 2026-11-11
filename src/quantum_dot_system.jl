@@ -1,4 +1,6 @@
-const f = FermionicHilbertSpaces.SymbolicFermionBasis(:f, FermionicHilbertSpaces.FermionicGroup(FermionicHilbertSpaces.Tags((:const,))))
+const f = let
+    @fermions f
+end
 const SPINS = (:↑, :↓)
 struct Grids{M, R, T, I}
     main::M
