@@ -21,9 +21,8 @@ get_purity(Ω) = [real(dot(Ω[:, i], Ω[:, i])) for i in eachindex(Ω[1, :])]
 function estimate_purity(X_train, Y_train, X_test, Y_test, noise::NoiseModel)
     X̃_train = QDELM.add_noise(X_train, noise)
     X̃_test = QDELM.add_noise(X_test, noise)
-    Z_train, Z_test = preprocess_X(; X_train = X̃_train, X_test = X̃_test)
-    Z_train_poly = QDELM.feature_transformation(Z_train, QDELM.Polynomial2FeatureTransformation())
-    Z_test_poly = QDELM.feature_transformation(Z_test, QDELM.Polynomial2FeatureTransformation())
+    Z_train_poly, Z_test_poly = preprocess_X(; X_train = X̃_train, X_test = X̃_test,
+        alg = QDELM.Polynomial2FeatureTransformation())
     W = QDELM.regression(Z_train_poly, reshape(Y_train, 1, length(Y_train)))
     Y_test_pred = W * Z_test_poly
     mse = QDELM.mse(Y_test, vec(Y_test_pred))

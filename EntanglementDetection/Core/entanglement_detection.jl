@@ -53,9 +53,8 @@ function contruct_EW(; X_train, Y_train, X_test, Y_test, noise::NoiseModel,
         feature_transformation_alg = QDELM.IdentityFeatureTransformation())
     X̃_train = add_noise(X_train, noise)
     X̃_test = add_noise(X_test, noise)
-    Z_train, Z_test = preprocess_X(X_train = X̃_train, X_test = X̃_test)
-    Z_train_poly = feature_transformation(Z_train, feature_transformation_alg)
-    Z_test_poly = feature_transformation(Z_test, feature_transformation_alg)
+    Z_train_poly, Z_test_poly = preprocess_X(
+        X_train = X̃_train, X_test = X̃_test, alg = feature_transformation_alg)
     W = regression(Z_train_poly, Y_train)
     Y_pred = W * Z_test_poly
     return (W = W, Y_pred = Y_pred, Y_test = Y_test,

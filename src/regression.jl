@@ -9,9 +9,15 @@ function center_X(; X_train, X_test)
     return (XC_train = XC_train, XC_test = XC_test)
 end
 add_bias(XC) = vcat(XC, ones(1, size(XC, 2)))
-function preprocess_X(; X_train, X_test)
+"""
+    preprocess_X(; X_train, X_test, alg = IdentityFeatureTransformation())
+
+Center both sets on the training mean, apply the feature transformation `alg`, then append a bias row of ones.
+"""
+function preprocess_X(; X_train, X_test, alg = IdentityFeatureTransformation())
     cX = center_X(X_train = X_train, X_test = X_test)
-    return (Z_train = add_bias(cX.XC_train), Z_test = add_bias(cX.XC_test))
+    return (Z_train = add_bias(feature_transformation(cX.XC_train, alg)),
+        Z_test = add_bias(feature_transformation(cX.XC_test, alg)))
 end
 
 """
