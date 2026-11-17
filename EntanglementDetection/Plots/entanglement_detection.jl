@@ -50,8 +50,8 @@ function plot_nonlinear_db_spin_space!(
     step_ent = 100
     function eval_point(xx, yy, zz)
         X_vec = QDELM.to_real.(S * (Pm_sub * [1.0, xx, yy, zz] ./ 4))
-        Z_vec = QDELM.add_bias(reshape(X_vec .- X_train_mean, :, 1))
-        X_poly = QDELM.feature_transformation(Z_vec, feature_transformation_alg)
+        X_poly = QDELM.add_bias(QDELM.feature_transformation(
+            reshape(X_vec .- X_train_mean, :, 1), feature_transformation_alg))
         Float32(dot(vec(X_poly), W))
     end
     vals = Float32[eval_point(xx, yy, zz) for xx in grid, yy in grid, zz in grid]
