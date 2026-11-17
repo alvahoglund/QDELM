@@ -86,10 +86,14 @@ function noise_sample(n::ShotNoise, X)
     size(X, 1) == nrows(n.ms) ||
         throw(DimensionMismatch("X has $(size(X, 1)) rows, expected $(nrows(n.ms))"))
     E = zeros(float(real(eltype(X))), size(X))
-    for (gi, g) in enumerate(groups(n.ms)), c in axes(X, 2)
-
-        L = psd_factor(group_covariance(n, max.(real.(X[g, c]), 0), gi))
-        E[g, c] = L * randn(size(L, 2))
+    for (gi, g) in enumerate(groups(n.ms))
+        p = max.(real.(X[g, :]), 0)
+        √p = sqrt.(p)
+        # diag(p) - p p' = L L' with L = diag(√p) - a p √p' and a = 1 / (1 + √(1 - Σp)),
+        # exact also when the kept outcomes have Σp < 1.
+        a = 1 ./ (1 .+ sqrt.(max.(1 .- sum(p, dims = 1), 0)))
+        z = randn(size(p))
+        E[g, :] = (√p .* z .- a .* sum(√p .* z, dims = 1) .* p) ./ sqrt(shots(n, gi))
     end
     return E
 end

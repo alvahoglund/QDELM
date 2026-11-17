@@ -49,9 +49,7 @@ function split_train_test(X, Y, train_fraction = 0.5)
 end
 
 ##
-function regression(X_train, Y_train)
-    return Y_train * pinv(X_train)
-end
+regression(X_train, Y_train) = Y_train / X_train
 
 # mse(Y_true, Y_pred) = mean((Y_true - Y_pred) .^ 2)
 function mse(Y_true::AbstractArray, Y_pred::AbstractArray)
@@ -71,9 +69,9 @@ end
 struct IdentityFeatureTransformation <: FeatureTransformation end
 
 function degree_2_polynomial_feature_transformation(X)
-    n_features, n_samples = size(X)
-    vcat(X, X .^ 2,
-        [X[i:i, :] .* X[j:j, :] for i in 1:n_features for j in (i + 1):n_features]...)
+    pairs = [(i, j) for i in axes(X, 1) for j in axes(X, 1) if i < j]
+    cross = [X[i, k] * X[j, k] for (i, j) in pairs, k in axes(X, 2)]
+    vcat(X, X .^ 2, cross)
 end
 
 function feature_transformation(X, alg::Polynomial2FeatureTransformation)
